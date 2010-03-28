@@ -1,3 +1,7 @@
+;;;; simple useful utilities
+;;;; (c) paul7, 2010
+;;;; (c) Paul Graham, 2003
+
 (defpackage :net.paul7.utility
   (:nicknames :util)
   (:use :common-lisp)
