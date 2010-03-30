@@ -61,6 +61,26 @@
 		   (otherwise  (error "Bad type")))
 		 :name name))    
 
+;;; utilities for variables
+(defmethod print-object ((var refal-var) stream)
+  (print-unreadable-object (var stream)
+    (if (bound var)
+	(format stream "~a.~a => ~a"
+		(var-type var)
+		(name var)
+		(value var))
+	(format stream "~a.~a"
+		(var-type var)
+		(name var)))))
+
+(defun unbind-var (var)
+  (setf (bound var) nil)
+  (setf (value var) nil))
+
+(defun bind-var (var value)
+  (setf (bound var) t)
+  (setf (value var) value))
+
 ;; check if value is appropriate to be bound to var, i.e.
 ;; 1) check data type 
 ;; 2) make sure there's no conflict with already bound value
@@ -83,27 +103,8 @@
 (defmethod appropriate and ((var-list list) value)
   (scopep value))
 
-(defmethod print-object ((var refal-var) stream)
-  (print-unreadable-object (var stream)
-    (if (bound var)
-	(format stream "~a.~a => ~a"
-		(var-type var)
-		(name var)
-		(value var))
-	(format stream "~a.~a"
-		(var-type var)
-		(name var)))))
-
-;; bind variable in the data scope given
-
-(defun unbind-var (var)
-  (setf (bound var) nil)
-  (setf (value var) nil))
-
-(defun bind-var (var value)
-  (setf (bound var) t)
-  (setf (value var) value))
-
+;; chomp size elements of the scope
+;; try to bind var, if appropriate
 (defun match-size (var scope size)
   (let ((elements (active-scope scope)))
     (if (<= size (length elements))
@@ -112,8 +113,8 @@
 	    (bind-var var matching)
 	    size)))))
 
-;; try and bind vars to match the scope given
-;; ATTENTION: needs refactoring
+;; bind variable in the data scope given
+;; continue with the rest on success
 (defgeneric match-var (first rest scope 
 			     &optional next-op))
 
@@ -149,6 +150,7 @@
 				next-op)))
 	  (match-pattern first subexpr #'chain-call)))))
 
+;; try and bind vars to match the scope given
 (defun match-pattern (pattern scope
 		       &optional (next-op (constantly t)))
   (let ((first (first pattern))
