@@ -81,7 +81,7 @@
        (not (scopep (first value)))))
 
 (defmethod appropriate and ((var-list list) value)
-  (error "not implemented yet"))
+  (scopep value))
 
 (defmethod print-object ((var refal-var) stream)
   (print-unreadable-object (var stream)
@@ -95,7 +95,6 @@
 		(name var)))))
 
 ;; bind variable in the data scope given
-(defgeneric match-var (var scope &key rematch))
 
 (defun unbind-var (var)
   (setf (bound var) nil)
@@ -113,57 +112,54 @@
 	    (bind-var var matching)
 	    size)))))
 
-(defmethod match-var ((var refal-t-var) scope &key rematch)
-  (if rematch
-      nil
-      (match-size var scope 1)))
-
-(defmethod match-var ((var refal-e-var) scope &key rematch)
-  (let ((size
-	 (cond 
-	   (rematch (1+ (length (value var))))
-	   ((bound var) (length (value var)))
-	   (t 0))))
-    (if rematch
-	(unbind-var var))
-    (match-size var scope size)))
-
 ;; try and bind vars to match the scope given
 ;; ATTENTION: needs refactoring
-(defun match-pattern (pattern scope 
+(defgeneric match-var (first rest scope 
+			     &optional next-op))
+
+(defmethod match-var ((first refal-t-var) rest scope
 		      &optional (next-op (constantly t)))
+  (if (match-size first scope 1)
+      (match-pattern rest (shift-scope scope 1) next-op)))
+
+(defmethod match-var ((first refal-e-var) rest scope
+		       &optional (next-op (constantly t)))
+  (let ((bound (bound first)))
+    (if bound
+	(let ((size (length (value first))))
+	  (if (match-size first scope size)
+	      (match-pattern rest 
+			     (shift-scope scope size)
+			     next-op)))
+	(do ((size 0 (1+ size)))
+	    ((not (match-size first scope size))
+	     (unbind-var first))
+	  (if (match-pattern rest 
+			     (shift-scope scope size)
+			     next-op)
+	      (return t)
+	      (unbind-var first))))))
+
+(defmethod match-var ((first list) rest scope
+		       &optional (next-op (constantly t)))
+  (let ((subexpr (first (active-scope scope))))
+    (if (appropriate first subexpr)
+	(flet ((chain-call ()
+		 (match-pattern rest (shift-scope scope 1) 
+				next-op)))
+	  (match-pattern first subexpr #'chain-call)))))
+
+(defun match-pattern (pattern scope
+		       &optional (next-op (constantly t)))
   (let ((first (first pattern))
 	(rest (rest pattern))
 	(active (active-scope scope)))
-    (cond
-      ((and (not pattern) (not active)) 
+    (cond 
+      ((and (not pattern) (not active))
        (funcall next-op))
       (pattern
-       (if (consp first)
-	   (let ((subexpr (first active)))
-	     (flet ((chain-call ()
-		      (let ((next-scope 
-			     (shift-scope scope 1)))
-			(match-pattern rest next-scope next-op))))
-	       (if (scopep subexpr)
-		   (match-pattern first subexpr #'chain-call))))
-	   (do ((bound (bound first))
-		(match-var-result
-		 (match-var first scope)
-		 (match-var first scope :rematch t)))
-	       ((not match-var-result)
-		(if (not bound)
-		    (unbind-var first)))
-	     (let ((next-scope 
-		    (shift-scope scope match-var-result)))
-	       (if (match-pattern rest next-scope next-op)
-		   (return t)
-		   (if bound 
-		       (return nil)))))))
+       (match-var first rest scope next-op))
       (t nil))))
-
-(defun match-subexpr (pattern scope)
-  (match-pattern pattern scope))
 
 ;;; pattern fiddling
 (defun make-pattern (specs 
@@ -187,7 +183,7 @@
   (multiple-value-bind (pattern dict) 
       (make-pattern pattern-spec)
     (let ((scope (make-scope string)))
-      (when (or (match-pattern pattern scope) nil)
+      (when (match-pattern pattern scope)
 	(loop for var being each hash-value in dict do
 	     (format t "~a~%" var))
 	t))))

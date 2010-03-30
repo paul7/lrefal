@@ -9,7 +9,8 @@
 	   single
 	   convert-sequence
 	   post-incf
-	   sequence-reader))
+	   sequence-reader
+	   test))
 
 (in-package :net.paul7.utility)
 
@@ -39,3 +40,9 @@
     #'(lambda ()
 	(if (< position length)
 	    (elt sequence (post-incf position))))))
+
+(defmacro test (form)
+  (with-gensyms (result)
+    `(let ((,result ,form))
+       (format t "TESTING ~a => ~a~%" ',form ,result)
+       ,result)))
