@@ -151,6 +151,8 @@
 	  (match-pattern first subexpr #'chain-call)))))
 
 ;; try and bind vars to match the scope given
+;; on success, continue to next-op
+;; retry, if it fails
 (defun match-pattern (pattern scope
 		       &optional (next-op (constantly t)))
   (let ((first (first pattern))
