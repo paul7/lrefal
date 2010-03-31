@@ -4,82 +4,11 @@
 (defpackage :net.paul7.refal.matcher
   (:nicknames :rmatch)
   (:use :common-lisp 
+	:net.paul7.refal.internal
 	:net.paul7.refal.parser
 	:net.paul7.utility))
 
 (in-package :net.paul7.refal.matcher)
-
-;;; Refal variable hierarchy
-(defclass refal-var ()
-  ((name
-    :initform 0
-    :initarg :name
-    :accessor name)
-   (value
-    :initform nil
-    :initarg :value
-    :accessor value)
-   (bound 
-    :initform nil
-    :initarg bound
-    :accessor bound)))
-
-;; e.X
-;; can be bound to anything
-(defclass refal-e-var (refal-var) 
-  ())
-
-;; t.X
-;; can be bound to atom or to parenthesized subexpression
-(defclass refal-t-var (refal-var)
-  ())
-
-;; s.X
-;; can be bound to atom only
-(defclass refal-s-var (refal-t-var)
-  ())
-
-;; return symbol corresponding to type
-;; can be used to construct fresh variable of the same type
-(defgeneric var-type (var))
-
-(defmethod var-type ((var refal-e-var))
-  'e)
-
-(defmethod var-type ((var refal-t-var))
-  't)
-
-(defmethod var-type ((var refal-s-var))
-  's)
-
-;; make unbound Refal variable of given type and name
-(defun make-var (type name)
-  (make-instance (case type
-		   (s 'refal-s-var)
-		   (t 'refal-t-var)
-		   (e 'refal-e-var)
-		   (otherwise  (error "Bad type")))
-		 :name name))    
-
-;;; utilities for variables
-(defmethod print-object ((var refal-var) stream)
-  (print-unreadable-object (var stream)
-    (if (bound var)
-	(format stream "~a.~a => ~a"
-		(var-type var)
-		(name var)
-		(value var))
-	(format stream "~a.~a"
-		(var-type var)
-		(name var)))))
-
-(defun unbind-var (var)
-  (setf (bound var) nil)
-  (setf (value var) nil))
-
-(defun bind-var (var value)
-  (setf (bound var) t)
-  (setf (value var) value))
 
 ;; check if value is appropriate to be bound to var, i.e.
 ;; 1) check data type 
@@ -172,12 +101,14 @@
 	     (let ((old-var (gethash name dict)))
 	       (cond
 		 ((not old-var) 
-		  (setf (gethash name dict) (make-var type name)))
+		  (setf (gethash name dict)
+			(make-var type name)))
 		 ((eq (var-type old-var) type) old-var)
 		 (t (error "type mismatch")))))
 	   (add-var-from-spec (spec)
 	     (if (atom (first spec))
-		 (add-var (first spec) (second spec))
+		 (add-var (make-uniform-type(first spec)) 
+			  (second spec))
 		 (make-pattern spec dict))))
     (values (mapcar #'add-var-from-spec specs)
 	    dict)))
@@ -186,7 +117,7 @@
 (defun ref-test (pattern-spec string)
   (multiple-value-bind (pattern dict) 
       (make-pattern pattern-spec)
-    (let ((scope (make-scope string)))
+    (let ((scope (string->scope string)))
       (when (match-pattern pattern scope)
 	(loop for var being each hash-value in dict do
 	     (format t "~a~%" var))

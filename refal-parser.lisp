@@ -4,11 +4,10 @@
 (defpackage :net.paul7.refal.parser
   (:nicknames :rparse)
   (:use :common-lisp 
-	:net.paul7.utility)
-  (:export make-scope 
-	   shift-scope
-	   active-scope
-	   scopep))
+	:net.paul7.utility
+	:net.paul7.refal.internal)
+  (:export string->scope 
+	   string->pattern))
 
 (in-package :net.paul7.refal.parser)
 
@@ -92,12 +91,22 @@
 (deftoken refal-char (src)
   (read-source src))
 
-(deftoken refal-open-parenthesis (src level)
-  (if (char= (read-source src) #\( )
-      (refal-expr src (1+ level))))
+(deftoken exactly (src char)
+  (let ((next (refal-char src)))
+    (if (char-equal char next)
+	char)))
+
+(deftoken one-of (src chars)
+  (if chars
+      (or (exactly src (first chars))
+	  (one-of src (rest chars)))))
+
+(deftoken refal-open-parenthesis (src level inside-token)
+  (if (exactly src #\( )
+      (funcall inside-token src (1+ level))))
 
 (deftoken refal-close-parenthesis (src)
-  (char= (read-source src) #\) ))
+  (exactly src #\) ))
 
 (deftoken refal-end-of-stream (src)
   (not (read-source src)))
@@ -105,64 +114,56 @@
 (deftoken refal-bad (src)
   (not (characterp (read-source src))))
 
-(deftoken refal-expr (src level)
-  (let ((result nil))
-    (loop
-       (if (refal-end-of-stream src)
-	   (if (zerop level)
-	       (return (data->scope (nreverse result)))
-	       (error "expected )")))
-       (if (refal-bad src)
-	   (error "bad source"))
-       (if (refal-close-parenthesis src)
-	   (if (not (zerop level))
-	       (return (data->scope (nreverse result)))
-	       (error "unexpected )")))
-       (push (or
-	      (refal-open-parenthesis src level)
-	      (refal-char src))
-	     result))))
+(deftoken refal-check-end (src level)
+  (cond
+    ((refal-end-of-stream src)
+     (if (zerop level)
+	 t
+	 (error "expected )")))
+    ((refal-bad src)
+     (error "bad source"))
+    ((refal-close-parenthesis src)
+     (if (not (zerop level))
+	 t
+	 (error "unexpected )")))
+    (t nil)))
 
-;;; this class represents Refal data
-;;; encapsulates list of atoms constituting scope
-;;; and boundaries of scope yet unmatched
-(defclass refal-scope ()
-  ((start
-    :accessor start
-    :initarg :start
-    :initform 0)
-   (end
-    :accessor end
-    :initarg :end)
-   (data
-    :accessor data
-    :initarg :data
-    :initform nil)))
+(defmacro deftoken-sequence (name (src level &rest args) &body body)
+  (with-gensyms (result)
+    `(deftoken ,name (,src ,level ,@args)
+       (let ((,result nil))
+	 (do ()
+	     ((refal-check-end ,src ,level)
+	      (data->scope (nreverse ,result)))
+	   (push (progn ,@body) ,result))))))
 
-(defmethod initialize-instance :after 
-    ((scope refal-scope) &key)
-  (with-accessors ((end end) (data data)) scope
-    (setf end (length data))))
+(deftoken-sequence refal-expr (src level)
+  (or
+   (refal-open-parenthesis src level #'refal-expr)
+   (refal-char src)))
 
-(defgeneric scopep (obj))
+(deftoken refal-literal (src)
+  (let ((char (refal-char src)))
+    (if (test char)
+	(make-instance 'refal-s-var :value (list char)))))
 
-(defmethod scopep ((obj t))
-  nil)
+(deftoken refal-id (src)
+  (refal-char src))
 
-(defmethod scopep ((obj refal-scope))
-  t)
+(deftoken refal-var (src)
+  (let ((type (one-of src '(#\e #\t #\s))))
+    (if (and type (exactly src #\.))
+	(let ((id (refal-id src)))
+	  (make-var (test type) (test id))))))
 
-;; return list representing unmatched part of the scope
-(defgeneric active-scope (scope))
-
-(defmethod active-scope ((scope refal-scope))
-  (with-accessors ((start start)
-		   (end end)
-		   (data data)) scope
-    (subseq data start end)))
+(deftoken-sequence refal-pattern (src level)
+  (or
+   (refal-open-parenthesis src level #'refal-pattern)
+   (refal-var src)
+   (refal-literal src)))
 
 ;; make refal-scope compatible atom list of the string
-(defun parse-string (string)
+(defun string->scope (string)
   (let ((src (make-source string)))
     (refal-expr src 0)))
 
@@ -170,16 +171,9 @@
 (defun data->scope (data)
   (make-instance 'refal-scope :data data))
 
-(defun make-scope (string)
-  (parse-string string))
+(defun string->pattern (string)
+  (let ((src (make-source string)))
+    (refal-pattern src 0)))
 
-;; promote scope boundaries after successful matching
-(defun shift-scope (scope margin)
-  (make-instance 'refal-scope 
-		 :data (data scope)
-		 :start (+ (start scope) margin)
-		 :end (end scope)))
-
-(defmethod print-object ((scope refal-scope) stream)
-  (print-unreadable-object (scope stream)
-    (format stream "~a" (data scope))))
+(defun data->pattern (data)
+  (make-instance 'refal-pattern :data data))
