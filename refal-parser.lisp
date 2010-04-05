@@ -101,6 +101,16 @@
       (or (exactly src (first chars))
 	  (one-of src (rest chars)))))
 
+(deftoken refal-space (src)
+  (one-of src '(#\Space #\Tab #\Newline)))
+
+(deftoken refal-delimiter (src)
+  (or (refal-space src) (one-of src '(#\) #\( ))))
+
+(deftoken refal-word-char (src)
+  (if (not (refal-delimiter src))
+      (refal-char src)))
+
 (deftoken refal-open-parenthesis (src level inside-token)
   (if (exactly src #\( )
       (funcall inside-token src (1+ level))))
@@ -113,6 +123,25 @@
 
 (deftoken refal-bad (src)
   (not (characterp (read-source src))))
+
+(defmacro deftoken-collect (name (src &rest args)
+				&body cond)
+  (with-gensyms (result each)
+    `(deftoken ,name (,src ,@args)
+       (let ((,result nil)
+	     (,each nil))
+	 (do ()
+	     ((or 
+	       (refal-end-of-stream ,src)
+	       (not (setf ,each (progn ,@cond))))
+	      (nreverse ,result))
+	   (push ,each ,result))))))
+
+(deftoken-collect refal-word (src) 
+  (refal-word-char src))
+
+(deftoken-collect refal-skip-spaces (src)
+  (refal-space src))
 
 (deftoken refal-check-end (src level)
   (cond
@@ -135,7 +164,9 @@
 	 (do ()
 	     ((refal-check-end ,src ,level)
 	      (data->scope (nreverse ,result)))
-	   (push (progn ,@body) ,result))))))
+	   (push (progn 
+		   (refal-skip-spaces src)
+		   ,@body) ,result))))))
 
 (deftoken-sequence refal-expr (src level)
   (or
@@ -143,24 +174,35 @@
    (refal-char src)))
 
 (deftoken refal-literal (src)
-  (let ((char (refal-char src)))
-    (if (test char)
-	(make-instance 'refal-s-var :value (list char)))))
+  (let ((word (refal-word src)))
+    (if (test word)
+	(make-instance 'refal-e-var :value word))))
 
 (deftoken refal-id (src)
-  (refal-char src))
+  (let ((id (refal-word src)))
+    (if id
+	(convert-sequence id 'string))))
 
-(deftoken refal-var (src)
+(deftoken refal-var (src dict)
   (let ((type (one-of src '(#\e #\t #\s))))
     (if (and type (exactly src #\.))
 	(let ((id (refal-id src)))
-	  (make-var (test type) (test id))))))
+	  (let ((old-var (test (gethash id dict))))
+	    (cond
+	      ((not old-var) 
+	       (setf (gethash id dict)
+		     (make-var type id)))
+	      ((eq (var-type old-var) type) old-var)
+	      (t (error "type mismatch"))))))))
 
-(deftoken-sequence refal-pattern (src level)
-  (or
-   (refal-open-parenthesis src level #'refal-pattern)
-   (refal-var src)
-   (refal-literal src)))
+(deftoken-sequence refal-pattern (src level 
+				      &optional (dict (make-hash-table)))
+  (let ((inner-pattern #'(lambda (src level)
+			   (refal-pattern src level dict))))
+    (or
+     (refal-open-parenthesis src level inner-pattern)
+     (refal-var src dict)
+     (refal-literal src))))
 
 ;; make refal-scope compatible atom list of the string
 (defun string->scope (string)
