@@ -167,5 +167,5 @@
 
 (defmethod print-object ((scope refal-scope) stream)
   (print-unreadable-object (scope stream)
-    (format stream "~a" (data scope))))
+    (format stream "~{~a ~}" (data scope))))
 

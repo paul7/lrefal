@@ -175,7 +175,7 @@
 
 (deftoken refal-literal (src)
   (let ((word (refal-word src)))
-    (if (test word)
+    (if word
 	(make-instance 'refal-e-var :value word))))
 
 (deftoken refal-id (src)
@@ -187,16 +187,17 @@
   (let ((type (one-of src '(#\e #\t #\s))))
     (if (and type (exactly src #\.))
 	(let ((id (refal-id src)))
-	  (let ((old-var (test (gethash id dict))))
+	  (let ((old-var (gethash id dict)))
 	    (cond
 	      ((not old-var) 
 	       (setf (gethash id dict)
 		     (make-var type id)))
-	      ((eq (var-type old-var) type) old-var)
+	      ((eq (var-type old-var) (make-uniform-type type)) old-var)
 	      (t (error "type mismatch"))))))))
 
-(deftoken-sequence refal-pattern (src level 
-				      &optional (dict (make-hash-table)))
+(deftoken-sequence refal-pattern (src level &optional 
+				      (dict 
+				       (make-hash-table :test #'equalp)))
   (let ((inner-pattern #'(lambda (src level)
 			   (refal-pattern src level dict))))
     (or
@@ -214,8 +215,11 @@
   (make-instance 'refal-scope :data data))
 
 (defun string->pattern (string)
-  (let ((src (make-source string)))
-    (refal-pattern src 0)))
+  (let ((src (make-source string))
+	(dict (make-hash-table :test #'equalp)))
+    (values 
+     (refal-pattern src 0 dict)
+     dict)))
 
 (defun data->pattern (data)
   (make-instance 'refal-pattern :data data))

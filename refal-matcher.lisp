@@ -29,7 +29,7 @@
        (not (consp (first value)))
        (not (scopep (first value)))))
 
-(defmethod appropriate and ((var-list list) value)
+(defmethod appropriate and ((var-list refal-pattern) value)
   (scopep value))
 
 ;; chomp size elements of the scope
@@ -70,7 +70,7 @@
 	      (return t)
 	      (unbind-var first))))))
 
-(defmethod match-var ((first list) rest scope
+(defmethod match-var ((first refal-scope) rest scope
 		       &optional (next-op (constantly t)))
   (let ((subexpr (first (active-scope scope))))
     (if (appropriate first subexpr)
@@ -84,13 +84,16 @@
 ;; retry, if it fails
 (defun match-pattern (pattern scope
 		       &optional (next-op (constantly t)))
-  (let ((first (first pattern))
-	(rest (rest pattern))
+  (print 1)
+  (active-scope pattern)
+  (print 2)
+  (let ((first (test (first (active-scope pattern))))
+	(rest (shift-scope pattern 1))
 	(active (active-scope scope)))
     (cond 
-      ((and (not pattern) (not active))
+      ((and (not (active-scope pattern)) (not active))
        (funcall next-op))
-      (pattern
+      ((active-scope pattern)
        (match-var first rest scope next-op))
       (t nil))))
 
@@ -116,7 +119,7 @@
 ;;; testing
 (defun ref-test (pattern-spec string)
   (multiple-value-bind (pattern dict) 
-      (make-pattern pattern-spec)
+      (string->pattern pattern-spec)
     (let ((scope (string->scope string)))
       (when (match-pattern pattern scope)
 	(loop for var being each hash-value in dict do
