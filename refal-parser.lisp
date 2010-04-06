@@ -7,7 +7,8 @@
 	:net.paul7.utility
 	:net.paul7.refal.internal)
   (:export string->scope 
-	   string->pattern))
+	   string->pattern
+	   data->pattern))
 
 (in-package :net.paul7.refal.parser)
 

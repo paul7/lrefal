@@ -54,7 +54,7 @@
 
 (defmethod match-var ((first refal-e-var) rest scope
 		       &optional (next-op (constantly t)))
-  (let ((bound (bound first)))
+  (let ((bound (test (bound first))))
     (if bound
 	(let ((size (length (value first))))
 	  (if (match-size first scope size)
@@ -113,13 +113,15 @@
 		 (add-var (make-uniform-type(first spec)) 
 			  (second spec))
 		 (make-pattern spec dict))))
-    (values (mapcar #'add-var-from-spec specs)
+    (values (data->pattern 
+	     (mapcar #'add-var-from-spec specs))
 	    dict)))
 
 ;;; testing
 (defun ref-test (pattern-spec string)
-  (multiple-value-bind (pattern dict) 
-      (string->pattern pattern-spec)
+  (multiple-value-bind (pattern dict)
+      (make-pattern pattern-spec)
+;      (string->pattern pattern-spec)
     (let ((scope (string->scope string)))
       (when (match-pattern pattern scope)
 	(loop for var being each hash-value in dict do
