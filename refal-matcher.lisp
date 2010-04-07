@@ -32,6 +32,9 @@
 (defmethod appropriate and ((var-list list) value)
   (scopep value))
 
+(defmethod appropriate and ((var-list refal-pattern) value)
+  (scopep value))
+
 ;; chomp size elements of the scope
 ;; try to bind var, if appropriate
 (defun match-size (var scope size)
@@ -51,7 +54,8 @@
 		      &optional (next-op (constantly t)))
   (let ((bound (bound first)))
     (if (match-size first scope 1)
-	(or (match-pattern rest (shift-scope scope 1) next-op)
+	(or (match-pattern 
+	     rest (shift-scope scope 1) next-op)
 	    (if (not bound)
 		(unbind-var first))))))
 
@@ -82,18 +86,26 @@
 				next-op)))
 	  (match-pattern first subexpr #'chain-call)))))
 
+(defmethod match-var ((first refal-pattern) rest scope
+		       &optional (next-op (constantly t)))
+  (let ((subexpr (first (active-scope scope))))
+    (if (appropriate first subexpr)
+	(flet ((chain-call ()
+		 (match-pattern rest (shift-scope scope 1) 
+				next-op)))
+	  (match-pattern first subexpr #'chain-call)))))
+
 ;; try and bind vars to match the scope given
 ;; on success, continue to next-op
 ;; retry, if it fails
 (defun match-pattern (pattern scope
 		       &optional (next-op (constantly t)))
-  (let ((first (first pattern))
-	(rest (rest pattern))
-	(active (active-scope scope)))
+  (let ((first (first (active-scope pattern)))
+	(rest (shift-scope pattern 1)))
     (cond 
-      ((and (not pattern) (not active))
+      ((and (empty pattern) (empty scope))
        (funcall next-op))
-      (pattern
+      ((not (empty pattern))
        (match-var first rest scope next-op))
       (t nil))))
 
@@ -113,13 +125,15 @@
 		 (add-var (make-uniform-type(first spec)) 
 			  (second spec))
 		 (make-pattern spec dict))))
-    (values (mapcar #'add-var-from-spec specs)
+    (values (data->pattern
+	     (mapcar #'add-var-from-spec specs))
 	    dict)))
 
 ;;; testing
 (defun ref-test (pattern-spec string)
   (multiple-value-bind (pattern dict) 
-      (make-pattern pattern-spec)
+;      (make-pattern pattern-spec)
+      (string->pattern pattern-spec)
     (let ((scope (string->scope string)))
       (when (match-pattern pattern scope)
 	(loop for var being each hash-value in dict do

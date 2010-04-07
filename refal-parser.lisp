@@ -158,15 +158,17 @@
 	 (error "unexpected )")))
     (t nil)))
 
-(defmacro deftoken-sequence (name (src level &rest args) &body body)
+(defmacro deftoken-sequence (name (src level &rest args) 
+			     &body body)
   (with-gensyms (result)
     `(deftoken ,name (,src ,level ,@args)
        (let ((,result nil))
 	 (do ()
-	     ((refal-check-end ,src ,level)
-	      (data->scope (nreverse ,result)))
+	     ((progn
+		(refal-skip-spaces src)
+		(refal-check-end ,src ,level))
+	      (data->pattern (nreverse ,result)))
 	   (push (progn 
-		   (refal-skip-spaces src)
 		   ,@body) ,result))))))
 
 (deftoken-sequence refal-expr (src level)
@@ -193,12 +195,14 @@
 	      ((not old-var) 
 	       (setf (gethash id dict)
 		     (make-var type id)))
-	      ((eq (var-type old-var) (make-uniform-type type)) old-var)
+	      ((eq (var-type old-var) 
+		   (make-uniform-type type)) old-var)
 	      (t (error "type mismatch"))))))))
 
-(deftoken-sequence refal-pattern (src level &optional 
-				      (dict 
-				       (make-hash-table :test #'equalp)))
+(deftoken-sequence refal-pattern 
+    (src level &optional 
+	 (dict 
+	  (make-hash-table :test #'equalp)))
   (let ((inner-pattern #'(lambda (src level)
 			   (refal-pattern src level dict))))
     (or

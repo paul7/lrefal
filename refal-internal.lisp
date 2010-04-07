@@ -8,6 +8,7 @@
   (:export shift-scope
 	   active-scope
 	   scopep
+	   empty
 	   bound
 	   value
 	   make-uniform-type
@@ -169,3 +170,5 @@
   (print-unreadable-object (scope stream)
     (format stream "~{~a ~}" (data scope))))
 
+(defmethod empty ((scope refal-scope))
+  (zerop (length (active-scope scope))))

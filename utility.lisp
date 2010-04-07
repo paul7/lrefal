@@ -1,6 +1,6 @@
 ;;;; simple useful utilities
 ;;;; (c) paul7, 2010
-;;;; (c) Paul Graham, 2003
+;;;; (c) Paul Graham, 1993
 
 (defpackage :net.paul7.utility
   (:nicknames :util)
