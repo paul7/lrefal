@@ -87,8 +87,6 @@
 ;; retry, if it fails
 (defun match-pattern (pattern scope
 		       &optional (next-op (constantly t)))
-  (test (active-scope scope))
-  (test pattern)
   (let ((first (first pattern))
 	(rest (rest pattern))
 	(active (active-scope scope)))
