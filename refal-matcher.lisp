@@ -6,7 +6,8 @@
   (:use :common-lisp 
 	:net.paul7.refal.internal
 	:net.paul7.refal.parser
-	:net.paul7.utility))
+	:net.paul7.utility)
+  (:export match-pattern))
 
 (in-package :net.paul7.refal.matcher)
 

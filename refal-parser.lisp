@@ -8,7 +8,8 @@
 	:net.paul7.refal.internal)
   (:export string->scope 
 	   string->pattern
-	   data->pattern))
+	   data->pattern
+	   interpolate))
 
 (in-package :net.paul7.refal.parser)
 
@@ -219,9 +220,10 @@
 (defun data->scope (data)
   (make-instance 'refal-scope :data data))
 
-(defun string->pattern (string)
-  (let ((src (make-source string))
-	(dict (make-hash-table :test #'equalp)))
+(defun string->pattern (string &optional
+			(dict
+			 (make-hash-table :test #'equalp)))
+  (let ((src (make-source string)))
     (values 
      (refal-pattern src 0 dict)
      dict)))
@@ -237,4 +239,6 @@
       (error (format nil "~a is unbound" var))))
   
 (defmethod interpolate ((pattern refal-pattern))
-  (data->scope (mapcan #'interpolate (data pattern))))
+  (data->scope (mapcan 
+		(compose #'mklist #'interpolate)
+		(data pattern))))

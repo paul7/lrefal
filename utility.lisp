@@ -7,6 +7,8 @@
   (:use :common-lisp)
   (:export with-gensyms
 	   single
+	   mklist
+	   compose
 	   convert-sequence
 	   post-incf
 	   sequence-reader
@@ -24,6 +26,19 @@
 (defun single (list)
   (and (consp list)
        (not (cdr list))))
+
+(defun mklist (obj)
+  (if (listp obj) obj (list obj)))
+
+(defun compose (&rest fns)
+  (if fns
+      (let ((fn1 (car (last fns)))
+            (fns (butlast fns)))
+        #'(lambda (&rest args)
+            (reduce #'funcall fns
+                    :from-end t
+                    :initial-value (apply fn1 args))))
+      #'identity))
 
 (defmacro convert-sequence (sequence class)
   `(map ,class #'identity ,sequence))
