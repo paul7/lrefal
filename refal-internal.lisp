@@ -11,6 +11,7 @@
 	   empty
 	   bound
 	   value
+	   data
 	   make-uniform-type
 	   make-var
 	   refal-var

@@ -94,7 +94,7 @@
 
 (deftoken exactly (src char)
   (let ((next (refal-char src)))
-    (if (char-equal char next)
+    (if (and next (char-equal char next))
 	char)))
 
 (deftoken one-of (src chars)
@@ -228,3 +228,13 @@
 
 (defun data->pattern (data)
   (make-instance 'refal-pattern :data data))
+
+(defgeneric interpolate (object))
+
+(defmethod interpolate ((var refal-var))
+  (if (bound var)
+      (value var)
+      (error (format nil "~a is unbound" var))))
+  
+(defmethod interpolate ((pattern refal-pattern))
+  (data->scope (mapcan #'interpolate (data pattern))))
