@@ -49,8 +49,11 @@
 
 (defmethod match-var ((first refal-t-var) rest scope
 		      &optional (next-op (constantly t)))
-  (if (match-size first scope 1)
-      (match-pattern rest (shift-scope scope 1) next-op)))
+  (let ((bound (bound first)))
+    (if (match-size first scope 1)
+	(or (match-pattern rest (shift-scope scope 1) next-op)
+	    (if (not bound)
+		(unbind-var first))))))
 
 (defmethod match-var ((first refal-e-var) rest scope
 		       &optional (next-op (constantly t)))
@@ -84,6 +87,8 @@
 ;; retry, if it fails
 (defun match-pattern (pattern scope
 		       &optional (next-op (constantly t)))
+  (test (active-scope scope))
+  (test pattern)
   (let ((first (first pattern))
 	(rest (rest pattern))
 	(active (active-scope scope)))
