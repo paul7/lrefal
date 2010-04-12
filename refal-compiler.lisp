@@ -68,3 +68,24 @@
 
 (defun ref-test (left right data)
   (funcall (compile-statement left right) (string->scope data)))
+
+(defclass refal-funcall ()
+  ((module
+    :initarg :module
+    :initform (error "No module specified")
+    :accessor module)
+   (function-name
+    :initarg :function-name
+    :initform (error "No function name specified")
+    :accessor function-name)
+   (function-argument
+    :initarg :function-argument
+    :initform (string->pattern "")
+    :accessor function-argument)))
+
+(defmethod interpolate ((call refal-funcall))
+  (with-accessors ((module module)
+		   (name function-name)
+		   (argument function-argument)) call
+  (let ((actual-arg (interpolate argument)))
+    (data (refal-call module name actual-arg)))))

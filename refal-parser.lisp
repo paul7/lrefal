@@ -234,4 +234,5 @@
       (error (format nil "~a is unbound" var))))
   
 (defmethod interpolate ((pattern refal-pattern))
-  (data->scope (mapcan (compose #'mklist #'interpolate)	(data pattern))))
+  (data->scope (mapcan (compose #'copy-list #'mklist #'interpolate)
+		       (data pattern))))
