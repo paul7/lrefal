@@ -30,9 +30,9 @@
     :accessor size
     :initform 0)))
 
-(defmethod initialize-instance :after ((src refal-source) &key)
-  (with-accessors ((data data) 
-		   (size size)) src
+(defmethod initialize-instance :after 
+    ((src refal-source) &key)
+  (with-accessors ((data data) (size size)) src
     (setf size (length data))))
 
 (defun make-source (string)
@@ -107,8 +107,7 @@
   (one-of src '(#\Space #\Tab #\Newline)))
 
 (deftoken refal-delimiter (src)
-  (or (refal-space src) 
-      (one-of src '(#\) #\( ))))
+  (or (refal-space src) (one-of src '(#\) #\( ))))
 
 (deftoken refal-word-char (src)
   (if (not (refal-delimiter src))
@@ -134,8 +133,9 @@
        (let ((,result nil)
 	     (,each nil))
 	 (do ()
-	     ((or (refal-end-of-stream ,src)
-		  (not (setf ,each (progn ,@cond))))
+	     ((or 
+	       (refal-end-of-stream ,src)
+	       (not (setf ,each (progn ,@cond))))
 	      (nreverse ,result))
 	   (push ,each ,result))))))
 
@@ -173,8 +173,9 @@
 		   ,@body) ,result))))))
 
 (deftoken-sequence refal-expr (src level)
-  (or (refal-open-parenthesis src level #'refal-expr)
-      (refal-char src)))
+  (or
+   (refal-open-parenthesis src level #'refal-expr)
+   (refal-char src)))
 
 (deftoken refal-literal (src)
   (let ((word (refal-word src)))
@@ -205,9 +206,10 @@
 	  (make-hash-table :test #'equalp)))
   (let ((inner-pattern #'(lambda (src level)
 			   (refal-pattern src level dict))))
-    (or (refal-open-parenthesis src level inner-pattern)
-	(refal-var src dict)
-	(refal-literal src))))
+    (or
+     (refal-open-parenthesis src level inner-pattern)
+     (refal-var src dict)
+     (refal-literal src))))
 
 ;; make refal-scope compatible atom list of the string
 (defun string->scope (string)
@@ -237,4 +239,6 @@
       (error (format nil "~a is unbound" var))))
   
 (defmethod interpolate ((pattern refal-pattern))
-  (data->scope (mapcan (compose #'mklist #'interpolate)	(data pattern))))
+  (data->scope (mapcan 
+		(compose #'mklist #'interpolate)
+		(data pattern))))
