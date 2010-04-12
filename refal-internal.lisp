@@ -60,9 +60,9 @@
 (defclass refal-s-var (refal-t-var)
   ())
 
-(defmethod initialize-instance :after
-    ((var refal-var) &key)
-  (with-accessors ((value value) (bound bound)) var
+(defmethod initialize-instance :after ((var refal-var) &key)
+  (with-accessors ((value value) 
+		   (bound bound)) var
     (setf bound value)))
 
 ;; return symbol corresponding to type
@@ -103,7 +103,7 @@
 (defmethod print-object ((var refal-var) stream)
   (print-unreadable-object (var stream)
     (if (bound var)
-	(format stream "~a.~a => ~a"
+	(format stream "~a.~a => ~a" 
 		(var-type var)
 		(name var)
 		(value var))
@@ -138,9 +138,9 @@
 (defclass refal-pattern (refal-scope) 
   ())
 
-(defmethod initialize-instance :after 
-    ((scope refal-scope) &key)
-  (with-accessors ((end end) (data data)) scope
+(defmethod initialize-instance :after ((scope refal-scope) &key)
+  (with-accessors ((end end) 
+		   (data data)) scope
     (setf end (length data))))
 
 (defgeneric scopep (obj))

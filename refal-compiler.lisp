@@ -28,26 +28,19 @@
     (setf dict (make-hash-table :test #'equalp))))
 
 (defun compile-function (module fname statements)
-  (with-accessors ((dict function-dict)
+  (with-accessors ((dict function-dict) 
 		   (name module-name)) module
     (if (gethash fname dict)
-	(error 
-	 (format nil 
-		 "duplicate function ~a in module ~a"
-		 fname module))
-    (setf (gethash fname dict)
-	  (compile-multiple statements)))))
+	(error (format nil "duplicate function ~a in module ~a" fname module))
+    (setf (gethash fname dict) (compile-multiple statements)))))
 
 (defun refal-call (module fname data)
-  (with-accessors ((dict function-dict)
+  (with-accessors ((dict function-dict) 
 		   (name module-name)) module
     (let ((func (gethash fname dict)))
       (if func
 	  (funcall func data)
-	  (error 
-	   (format nil
-		   "no function ~a in module ~a"
-		   fname module))))))
+	  (error (format nil "no function ~a in module ~a" fname module))))))
 
 ;; compile simple statement
 (defun compile-multiple (statements)
@@ -57,21 +50,17 @@
 		 statements)))
     (labels ((compiled (code data)
 	       (if code
-		   (or
-		    (funcall (first code) data)
-		    (compiled (rest code) data)))))
+		   (or (funcall (first code) data)
+		       (compiled (rest code) data)))))
       #'(lambda (data)
 	  (compiled compiled-statements data)))))
 	       
 (defun compile-statement (left right)
-  (multiple-value-bind (pattern dict)
-      (string->pattern left)
+  (multiple-value-bind (pattern dict) (string->pattern left)
     (let ((construct (string->pattern right dict)))
       #'(lambda (data)
 	  (if (match-pattern pattern data)
 	      (interpolate construct))))))
 
 (defun ref-test (left right data)
-  (funcall
-   (compile-statement left right)
-   (string->scope data)))
+  (funcall (compile-statement left right) (string->scope data)))
