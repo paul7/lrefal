@@ -58,9 +58,13 @@
 (defun compile-statement (left right)
   (multiple-value-bind (pattern dict) (string->pattern left)
     (let ((construct (string->pattern right dict)))
-      #'(lambda (data)
-	  (if (match-pattern pattern data)
-	      (interpolate construct))))))
+      (flet ((unbind-all ()
+	       (loop for var being each hash-value in dict do
+		    (unbind-var var))))
+	#'(lambda (data)
+	    (unbind-all)
+	    (if (match-pattern pattern data)
+		(interpolate construct)))))))
 
 (defun ref-test (left right data)
   (funcall (compile-statement left right) (string->scope data)))
