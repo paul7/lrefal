@@ -218,9 +218,8 @@
 (defun data->scope (data)
   (make-instance 'refal-scope :data data))
 
-(defun string->pattern (string &optional
-			(dict
-			 (make-hash-table :test #'equalp)))
+(defun string->pattern (string 
+			&optional (dict (make-hash-table :test #'equalp)))
   (let ((src (make-source string)))
     (values 
      (refal-pattern src 0 dict)
