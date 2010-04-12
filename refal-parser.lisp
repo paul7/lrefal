@@ -199,10 +199,8 @@
 		   (make-uniform-type type)) old-var)
 	      (t (error "type mismatch"))))))))
 
-(deftoken-sequence refal-pattern 
-    (src level &optional 
-	 (dict 
-	  (make-hash-table :test #'equalp)))
+(deftoken-sequence refal-pattern (src level 
+				      &optional (dict (make-hash-table :test #'equalp)))
   (let ((inner-pattern #'(lambda (src level)
 			   (refal-pattern src level dict))))
     (or (refal-open-parenthesis src level inner-pattern)
