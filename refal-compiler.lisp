@@ -33,9 +33,9 @@
   (with-accessors ((dict function-dict) 
 		   (name module-name)) module
     (if (gethash fname dict)
-	(error (format nil "duplicate function ~a in module ~a" 
-		       fname module))
-    (setf (gethash fname dict) (compile-multiple statements)))))
+	(warn (format nil "duplicate function ~a in module ~a" 
+		       fname module)))
+    (setf (gethash fname dict) (compile-multiple statements))))
 
 (defun refal-call (module fname data)
   (with-accessors ((dict function-dict) 

@@ -124,7 +124,7 @@
   (exactly src #\) ))
 
 (deftoken refal-open-funcall (src)
-  (exactly src #\> ))
+  (exactly src #\< ))
 
 (deftoken refal-close-funcall (src)
   (exactly src #\> ))
@@ -241,17 +241,21 @@
 		   (make-uniform-type type)) old-var)
 	      (t (error "type mismatch"))))))))
 
-#+tomorrow(deftoken refal-fun-and-args (src)
+(deftoken refal-fun-and-args (src dict)
   (let ((id (refal-id src)))
     (if id
-	(let (())))))
+	(let ((arg (refal-pattern src dict)))
+	  (if arg
+	      (make-instance 'refal-funcall 
+			     :function-name id
+			     :function-argument arg))))))
 
-#+tomorrow(defblock refal-funcall 
-    (src
-     (refal-open-funcall
-      refal-fun-and-args
-      refal-close-funcall)
-     (error "expected >")))
+(defblock refal-funcall 
+    (src dict)
+  (refal-open-funcall
+   refal-fun-and-args
+   refal-close-funcall)
+  (error "expected >"))
   
 (defblock refal-subpattern 
     (src dict)
@@ -263,6 +267,7 @@
 (deftoken-sequence refal-pattern 
     (src &optional (dict (make-hash-table :test #'equalp)))
   (or (refal-subpattern src dict)
+      (refal-funcall src dict)
       (refal-var src dict)
       (refal-literal src)))
 

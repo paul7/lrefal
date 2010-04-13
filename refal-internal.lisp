@@ -21,6 +21,9 @@
 	   refal-scope
 	   refal-pattern
 	   refal-funcall
+	   function-name
+	   function-argument
+	   module
 	   bind-var
 	   unbind-var
 	   var-type
@@ -178,7 +181,7 @@
 (defclass refal-funcall ()
   ((module
     :initarg :module
-    :initform *main*
+    :initform rtrans::*main*
     :accessor module)
    (function-name
     :initarg :function-name
@@ -186,5 +189,6 @@
     :accessor function-name)
    (function-argument
     :initarg :function-argument
-    :initform (string->pattern "")
+    :initform (make-instance 'refal-pattern 
+			     :data nil)
     :accessor function-argument)))
