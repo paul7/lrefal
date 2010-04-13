@@ -40,43 +40,31 @@
   (make-instance 'refal-source 
 		 :data (convert-sequence string 'list)))
 
-(defgeneric read-source (src))
-
-(defmethod read-source ((src refal-source))
+(defun read-source (src)
   (with-accessors ((data data) 
 		   (src-pos src-pos) 
 		   (size size)) src
     (if (< src-pos size)
 	(elt data (post-incf src-pos)))))
 
-(defgeneric save-pos (src))
-
-(defmethod save-pos ((src refal-source))
+(defun save-pos (src)
   (with-accessors ((saved-pos saved-pos)
 		   (src-pos src-pos)) src
     (push src-pos saved-pos)))
 
-(defgeneric load-pos (src))
-
-(defmethod load-pos ((src refal-source))
+(defun load-pos (src)
   (with-accessors ((saved-pos saved-pos)) src
     (if saved-pos
 	(pop saved-pos)
 	(error "stack underflow"))))
 
-(defgeneric try-token (src))
-
-(defmethod try-token ((src refal-source))
+(defun try-token (src)
   (save-pos src))
 
-(defgeneric accept-token (src))
-
-(defmethod accept-token ((src refal-source))
+(defun accept-token (src)
     (load-pos src))
 
-(defgeneric reject-token (src))
-
-(defmethod reject-token ((src refal-source))
+(defun reject-token (src)
   (with-accessors ((src-pos src-pos)) src
     (setf src-pos (load-pos src))))
 

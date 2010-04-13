@@ -183,9 +183,7 @@
   t)
 
 ;; return list representing unmatched part of the scope
-(defgeneric active-scope (scope))
-
-(defmethod active-scope ((scope refal-scope))
+(defun active-scope (scope)
   (with-accessors ((start start)
 		   (end end)
 		   (data data)) scope
@@ -202,7 +200,7 @@
   (print-unreadable-object (scope stream)
     (format stream "~{~a ~}" (data scope))))
 
-(defmethod empty ((scope refal-scope))
+(defun empty (scope)
   (zerop (length (active-scope scope))))
 
 (defclass refal-funcall ()
