@@ -159,19 +159,9 @@
 (deftoken-collect refal-skip-spaces (src)
   (refal-space src))
 
-#+old(deftoken refal-check-end (src level)
-  (cond
-    ((refal-end-of-stream src)
-     (if (zerop level)
-	 t
-	 (error "expected )")))
-    ((refal-bad src)
-     (error "bad source"))
-    ((refal-close-parenthesis src)
-     (if (not (zerop level))
-	 t
-	 (error "unexpected )")))
-    (t nil)))
+(deftoken refal-empty (src)
+  (refal-skip-spaces src)
+  (refal-end-of-stream src))
 
 (deftoken refal-inner (src)
   (not (or (refal-close-parenthesis src)
@@ -203,26 +193,26 @@
 		   ,@body) ,result))))))
 
 (defmacro defblock (name 
-		    (src (open 
-			  body 
-			  close) 
-			 &optional 
-			 (bad `(error "expected closing token"))))
+		    (src &rest args) 
+		    (open 
+		     body 
+		     close) 
+		    &optional (bad `(error "expected closing token")))
   (with-gensyms (subexpr)
-    `(deftoken ,name (,src)
+    `(deftoken ,name (,src ,@args)
        (and (,open ,src)
-	    (let ((,subexpr (,body ,src)))
+	    (let ((,subexpr (,body ,src ,@args)))
 	      (if (and ,subexpr 
 		       (,close ,src))
 		  ,subexpr
 		  ,bad))))))
 
 (defblock refal-subexpr 
-    (src 
-     (refal-open-parenthesis 
-      refal-expr
-      refal-close-parenthesis)
-     (error "expected )")))
+    (src) 
+  (refal-open-parenthesis 
+   refal-expr
+   refal-close-parenthesis)
+  (error "expected )"))
   
 (deftoken-sequence refal-expr (src)
   (or (refal-subexpr src)
@@ -264,15 +254,15 @@
      (error "expected >")))
   
 (defblock refal-subpattern 
-    (src 
-     (refal-open-parenthesis 
-      refal-pattern
-      refal-close-parenthesis)
-     (error "expected )")))
+    (src dict)
+  (refal-open-parenthesis 
+   refal-pattern
+   refal-close-parenthesis)
+  (error "expected )"))
 
 (deftoken-sequence refal-pattern 
     (src &optional (dict (make-hash-table :test #'equalp)))
-  (or (refal-subpattern src)
+  (or (refal-subpattern src dict)
       (refal-var src dict)
       (refal-literal src)))
 
@@ -286,8 +276,11 @@
 
 ;; make refal-scope compatible atom list of the string
 (defun string->scope (string)
-  (let ((src (make-source string)))
-    (refal-expr src)))
+  (let* ((src (make-source string))
+	 (expr (refal-expr src)))
+    (if (refal-empty src)
+	expr
+	(error (format nil "unexpected ~a" (refal-char src))))))
 
 ;; make scope corresponding to the string
 (defun data->scope (data)
