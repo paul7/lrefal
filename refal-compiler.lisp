@@ -61,13 +61,15 @@
 	  (compiled compiled-statements data)))))
 	       
 (defun compile-statement (pattern construct dict)
-  (flet ((unbind-all ()
+  (flet ((do-vars (fn)
 	   (loop for var being each hash-value in dict do
-		(unbind-var var))))
+		(funcall fn var))))
     #'(lambda (data)
-	(unbind-all)
-	(if (match-pattern pattern data)
-	    (interpolate construct)))))
+	(do-vars #'push-scope)
+	(let ((res (if (match-pattern pattern data)
+		       (interpolate construct))))
+	  (do-vars #'pop-scope)
+	  res))))
 
 (defmethod interpolate ((call refal-funcall))
   (with-accessors ((module module)
