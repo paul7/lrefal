@@ -20,8 +20,14 @@
 	   refal-e-var
 	   refal-scope
 	   refal-pattern
+	   refal-funcall
+	   function-name
+	   function-argument
+	   module
 	   bind-var
 	   unbind-var
+	   push-scope
+	   pop-scope
 	   var-type
 	   s
 	   t
@@ -43,7 +49,13 @@
    (bound 
     :initform nil
     :initarg bound
-    :accessor bound)))
+    :accessor bound)
+   (value-stack
+    :initform nil
+    :accessor value-stack)
+   (bound-stack
+    :initform nil
+    :accessor bound-stack)))
 
 ;; e.X
 ;; can be bound to anything
@@ -64,6 +76,25 @@
   (with-accessors ((value value) 
 		   (bound bound)) var
     (setf bound value)))
+
+(defun push-scope (var)
+  (with-accessors ((value value)
+		   (bound bound)
+		   (value-stack value-stack)
+		   (bound-stack bound-stack)) var
+    (push value value-stack)
+    (push bound bound-stack)
+    (unbind-var var)
+    var))
+
+(defun pop-scope (var)
+  (with-accessors ((value value)
+		   (bound bound)
+		   (value-stack value-stack)
+		   (bound-stack bound-stack)) var
+    (setf value (pop value-stack))
+    (setf bound (pop bound-stack))
+    var))
 
 ;; return symbol corresponding to type
 ;; can be used to construct fresh variable of the same type
@@ -173,3 +204,18 @@
 
 (defmethod empty ((scope refal-scope))
   (zerop (length (active-scope scope))))
+
+(defclass refal-funcall ()
+  ((module
+    :initarg :module
+    :initform rtrans::*main*
+    :accessor module)
+   (function-name
+    :initarg :function-name
+    :initform (error "No function name specified")
+    :accessor function-name)
+   (function-argument
+    :initarg :function-argument
+    :initform (make-instance 'refal-pattern 
+			     :data nil)
+    :accessor function-argument)))

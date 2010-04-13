@@ -8,6 +8,7 @@
 	:net.paul7.refal.internal)
   (:export string->scope 
 	   string->pattern
+	   string->statement
 	   data->pattern
 	   interpolate))
 
@@ -108,18 +109,31 @@
 
 (deftoken refal-delimiter (src)
   (or (refal-space src) 
-      (one-of src '(#\) #\( ))))
+      (one-of src '(#\) #\( #\< #\> ))))
 
 (deftoken refal-word-char (src)
-  (if (not (refal-delimiter src))
+  (if (not (or (refal-delimiter src)
+	       (refal-separator src)
+	       (refal-statement-terminator src)))
       (refal-char src)))
 
-(deftoken refal-open-parenthesis (src level inside-token)
-  (if (exactly src #\( )
-      (funcall inside-token src (1+ level))))
+(deftoken refal-open-parenthesis (src)
+  (exactly src #\( ))
 
 (deftoken refal-close-parenthesis (src)
   (exactly src #\) ))
+
+(deftoken refal-open-funcall (src)
+  (exactly src #\< ))
+
+(deftoken refal-close-funcall (src)
+  (exactly src #\> ))
+
+(deftoken refal-separator (src)
+  (exactly src #\= ))
+
+(deftoken refal-statement-terminator (src)
+  (exactly src #\; ))
 
 (deftoken refal-end-of-stream (src)
   (not (read-source src)))
@@ -145,35 +159,63 @@
 (deftoken-collect refal-skip-spaces (src)
   (refal-space src))
 
-(deftoken refal-check-end (src level)
-  (cond
+(deftoken refal-empty (src)
+  (refal-skip-spaces src)
+  (refal-end-of-stream src))
+
+(deftoken refal-inner (src)
+  (not (or (refal-close-parenthesis src)
+	   (refal-close-funcall src)
+	   (refal-separator src)
+	   (refal-statement-terminator src))))
+
+(deftoken refal-check-end (src)
+  (cond 
     ((refal-end-of-stream src)
-     (if (zerop level)
-	 t
-	 (error "expected )")))
+     t)
     ((refal-bad src)
      (error "bad source"))
-    ((refal-close-parenthesis src)
-     (if (not (zerop level))
-	 t
-	 (error "unexpected )")))
-    (t nil)))
+    ((refal-inner src)
+     nil)
+    (t t)))
 
-(defmacro deftoken-sequence (name (src level &rest args) 
+(defmacro deftoken-sequence (name (src &rest args) 
 			     &body body)
   (with-gensyms (result)
-    `(deftoken ,name (,src ,level ,@args)
+    `(deftoken ,name (,src ,@args)
        (let ((,result nil))
 	 (do ()
 	     ((progn
 		(refal-skip-spaces src)
-		(refal-check-end ,src ,level))
+		(refal-check-end ,src))
 	      (data->pattern (nreverse ,result)))
 	   (push (progn 
 		   ,@body) ,result))))))
 
-(deftoken-sequence refal-expr (src level)
-  (or (refal-open-parenthesis src level #'refal-expr)
+(defmacro defblock (name 
+		    (src &rest args) 
+		    (open 
+		     body 
+		     close) 
+		    &optional (bad `(error "expected closing token")))
+  (with-gensyms (subexpr)
+    `(deftoken ,name (,src ,@args)
+       (and (,open ,src)
+	    (let ((,subexpr (,body ,src ,@args)))
+	      (if (and ,subexpr 
+		       (,close ,src))
+		  ,subexpr
+		  ,bad))))))
+
+(defblock refal-subexpr 
+    (src) 
+  (refal-open-parenthesis 
+   refal-expr
+   refal-close-parenthesis)
+  (error "expected )"))
+  
+(deftoken-sequence refal-expr (src)
+  (or (refal-subexpr src)
       (refal-char src)))
 
 (deftoken refal-literal (src)
@@ -199,32 +241,66 @@
 		   (make-uniform-type type)) old-var)
 	      (t (error "type mismatch"))))))))
 
+(deftoken refal-fun-and-args (src dict)
+  (let ((id (refal-id src)))
+    (if id
+	(let ((arg (refal-pattern src dict)))
+	  (if arg
+	      (make-instance 'refal-funcall 
+			     :function-name id
+			     :function-argument arg))))))
+
+(defblock refal-funcall 
+    (src dict)
+  (refal-open-funcall
+   refal-fun-and-args
+   refal-close-funcall)
+  (error "expected >"))
+  
+(defblock refal-subpattern 
+    (src dict)
+  (refal-open-parenthesis 
+   refal-pattern
+   refal-close-parenthesis)
+  (error "expected )"))
+
 (deftoken-sequence refal-pattern 
-    (src level &optional 
-	 (dict 
-	  (make-hash-table :test #'equalp)))
-  (let ((inner-pattern #'(lambda (src level)
-			   (refal-pattern src level dict))))
-    (or (refal-open-parenthesis src level inner-pattern)
-	(refal-var src dict)
-	(refal-literal src))))
+    (src &optional (dict (make-hash-table :test #'equalp)))
+  (or (refal-subpattern src dict)
+      (refal-funcall src dict)
+      (refal-var src dict)
+      (refal-literal src)))
+
+(deftoken refal-statement 
+    (src &optional (dict (make-hash-table :test #'equalp)))
+  (let ((left-pattern (refal-pattern src dict)))
+    (if (refal-separator src)
+	(let ((right-pattern (refal-pattern src dict)))
+	  (if (refal-statement-terminator src)
+	      (list left-pattern right-pattern dict))))))
 
 ;; make refal-scope compatible atom list of the string
 (defun string->scope (string)
-  (let ((src (make-source string)))
-    (refal-expr src 0)))
+  (let* ((src (make-source string))
+	 (expr (refal-expr src)))
+    (if (refal-empty src)
+	expr
+	(error (format nil "unexpected ~a" (refal-char src))))))
 
 ;; make scope corresponding to the string
 (defun data->scope (data)
   (make-instance 'refal-scope :data data))
 
-(defun string->pattern (string &optional
-			(dict
-			 (make-hash-table :test #'equalp)))
+(defun string->pattern (string 
+			&optional (dict (make-hash-table :test #'equalp)))
   (let ((src (make-source string)))
     (values 
-     (refal-pattern src 0 dict)
+     (refal-pattern src dict)
      dict)))
+
+(defun string->statement (string)
+  (let ((src (make-source string)))
+    (refal-statement src)))
 
 (defun data->pattern (data)
   (make-instance 'refal-pattern :data data))
@@ -237,4 +313,5 @@
       (error (format nil "~a is unbound" var))))
   
 (defmethod interpolate ((pattern refal-pattern))
-  (data->scope (mapcan (compose #'mklist #'interpolate)	(data pattern))))
+  (data->scope (mapcan (compose #'copy-list #'mklist #'interpolate)
+		       (data pattern))))
