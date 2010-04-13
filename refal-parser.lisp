@@ -8,6 +8,7 @@
 	:net.paul7.refal.internal)
   (:export string->scope 
 	   string->pattern
+	   string->statement
 	   data->pattern
 	   interpolate))
 
@@ -111,7 +112,9 @@
       (one-of src '(#\) #\( #\< #\> ))))
 
 (deftoken refal-word-char (src)
-  (if (not (refal-delimiter src))
+  (if (not (or (refal-delimiter src)
+	       (refal-separator src)
+	       (refal-statement-terminator src)))
       (refal-char src)))
 
 (deftoken refal-open-parenthesis (src)
@@ -125,6 +128,12 @@
 
 (deftoken refal-close-funcall (src)
   (exactly src #\> ))
+
+(deftoken refal-separator (src)
+  (exactly src #\= ))
+
+(deftoken refal-statement-terminator (src)
+  (exactly src #\; ))
 
 (deftoken refal-end-of-stream (src)
   (not (read-source src)))
@@ -166,7 +175,9 @@
 
 (deftoken refal-inner (src)
   (not (or (refal-close-parenthesis src)
-	   (refal-close-funcall src))))
+	   (refal-close-funcall src)
+	   (refal-separator src)
+	   (refal-statement-terminator src))))
 
 (deftoken refal-check-end (src)
   (cond 
@@ -240,11 +251,18 @@
 		   (make-uniform-type type)) old-var)
 	      (t (error "type mismatch"))))))))
 
-(deftoken refal-funcall (src)
-  (and (exactly src #\<)
-	 
-       (exactly src #\>)))
+#+tomorrow(deftoken refal-fun-and-args (src)
+  (let ((id (refal-id src)))
+    (if id
+	(let (())))))
 
+#+tomorrow(defblock refal-funcall 
+    (src
+     (refal-open-funcall
+      refal-fun-and-args
+      refal-close-funcall)
+     (error "expected >")))
+  
 (defblock refal-subpattern 
     (src 
      (refal-open-parenthesis 
@@ -257,6 +275,14 @@
   (or (refal-subpattern src)
       (refal-var src dict)
       (refal-literal src)))
+
+(deftoken refal-statement 
+    (src &optional (dict (make-hash-table :test #'equalp)))
+  (let ((left-pattern (refal-pattern src dict)))
+    (if (refal-separator src)
+	(let ((right-pattern (refal-pattern src dict)))
+	  (if (refal-statement-terminator src)
+	      (list left-pattern right-pattern dict))))))
 
 ;; make refal-scope compatible atom list of the string
 (defun string->scope (string)
@@ -273,6 +299,10 @@
     (values 
      (refal-pattern src dict)
      dict)))
+
+(defun string->statement (string)
+  (let ((src (make-source string)))
+    (refal-statement src)))
 
 (defun data->pattern (data)
   (make-instance 'refal-pattern :data data))

@@ -20,6 +20,7 @@
 	   refal-e-var
 	   refal-scope
 	   refal-pattern
+	   refal-funcall
 	   bind-var
 	   unbind-var
 	   var-type
@@ -173,3 +174,17 @@
 
 (defmethod empty ((scope refal-scope))
   (zerop (length (active-scope scope))))
+
+(defclass refal-funcall ()
+  ((module
+    :initarg :module
+    :initform *main*
+    :accessor module)
+   (function-name
+    :initarg :function-name
+    :initform (error "No function name specified")
+    :accessor function-name)
+   (function-argument
+    :initarg :function-argument
+    :initform (string->pattern "")
+    :accessor function-argument)))

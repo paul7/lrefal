@@ -23,6 +23,8 @@
     :initarg :module-name
     :accessor module-name)))
 
+(defparameter *main* (make-instance 'refal-module))
+
 (defun reset-module (module)
   (with-accessors ((dict function-dict)) module
     (setf dict (make-hash-table :test #'equalp))))
@@ -48,7 +50,8 @@
 (defun compile-multiple (statements)
   (let ((compiled-statements 
 	 (mapcar #'(lambda (statement)
-		     (apply #'compile-statement statement))
+		     (apply #'compile-statement 
+			    (string->statement statement)))
 		 statements)))
     (labels ((compiled (code data)
 	       (if code
@@ -57,33 +60,14 @@
       #'(lambda (data)
 	  (compiled compiled-statements data)))))
 	       
-(defun compile-statement (left right)
-  (multiple-value-bind (pattern dict) (string->pattern left)
-    (let ((construct (string->pattern right dict)))
-      (flet ((unbind-all ()
-	       (loop for var being each hash-value in dict do
-		    (unbind-var var))))
-	#'(lambda (data)
-	    (unbind-all)
-	    (if (match-pattern pattern data)
-		(interpolate construct)))))))
-
-(defun ref-test (left right data)
-  (funcall (compile-statement left right) (string->scope data)))
-
-(defclass refal-funcall ()
-  ((module
-    :initarg :module
-    :initform (error "No module specified")
-    :accessor module)
-   (function-name
-    :initarg :function-name
-    :initform (error "No function name specified")
-    :accessor function-name)
-   (function-argument
-    :initarg :function-argument
-    :initform (string->pattern "")
-    :accessor function-argument)))
+(defun compile-statement (pattern construct dict)
+  (flet ((unbind-all ()
+	   (loop for var being each hash-value in dict do
+		(unbind-var var))))
+    #'(lambda (data)
+	(unbind-all)
+	(if (match-pattern pattern data)
+	    (interpolate construct)))))
 
 (defmethod interpolate ((call refal-funcall))
   (with-accessors ((module module)
