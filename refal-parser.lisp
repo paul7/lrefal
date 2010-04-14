@@ -158,24 +158,31 @@
   (refal-skip-spaces src)
   (refal-end-of-stream src))
 
-(deftoken refal-inner (src)
+(deftoken refal-expression-char (src)
   (not (or (refal-close-parenthesis src)
 	   (refal-close-funcall src)
 	   (refal-close-block src)
 	   (refal-separator src)
 	   (refal-statement-terminator src))))
 
-(deftoken refal-check-end (src)
+(deftoken refal-statement-char (src)
+  (not (or (refal-close-parenthesis src)
+	   (refal-close-funcall src)
+	   (refal-close-block src)
+	   (refal-statement-terminator src))))
+
+(deftoken refal-check-end (src &key (allowed (constantly nil)))
   (cond 
     ((refal-end-of-stream src)
      t)
     ((refal-bad src)
      (error "bad source"))
-    ((refal-inner src)
+    ((funcall allowed src)
      nil)
     (t t)))
 
-(defmacro deftoken-sequence (name (src &rest args) constructor
+(defmacro deftoken-sequence (name (src &rest args) 
+			     constructor allowed
 			     &body body)
   (with-gensyms (result token)
     `(deftoken ,name (,src ,@args)
@@ -183,7 +190,7 @@
 	 (do ()
 	     ((progn
 		(refal-skip-spaces src)
-		(refal-check-end ,src))
+		(refal-check-end ,src :allowed ,allowed))
 	      (funcall ,constructor (nreverse ,result)))
 	   (let ((,token (progn 
 			   ,@body)))
@@ -214,7 +221,8 @@
    refal-close-parenthesis)
   (error "expected )"))
   
-(deftoken-sequence refal-expr (src) #'data->scope
+(deftoken-sequence refal-expr (src) 
+    #'data->scope #'refal-expression-char
   (or (refal-subexpr src)
       (refal-char src)))
 
@@ -264,7 +272,8 @@
   (error "expected )"))
 
 (deftoken-sequence refal-pattern 
-    (src &optional (dict (make-hash-table :test #'equalp))) #'data->pattern
+    (src &optional (dict (make-hash-table :test #'equalp))) 
+    #'data->pattern #'refal-expression-char
   (or (refal-subpattern src dict)
       (refal-funcall src dict)
       (refal-var src dict)
@@ -281,7 +290,8 @@
 (deftoken refal-function-header (src)
   (refal-id src))
 
-(deftoken-sequence refal-funbody (src) #'identity 
+(deftoken-sequence refal-funbody (src) 
+    #'identity #'refal-statement-char 
   (refal-statement src))
 
 (defblock refal-block (src)
@@ -294,7 +304,7 @@
   (let ((fname (refal-function-header src)))
     (if fname
 	(let ((fbody (refal-block src)))
-	  (if (test fbody)
+	  (if fbody
 	      (list :fname fname
 		    :statements fbody))))))
 

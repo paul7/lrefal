@@ -53,7 +53,7 @@
   (let ((compiled-statements 
 	 (mapcar #'(lambda (statement)
 		     (funcall #'compile-statement statement))
-		 (test statements))))
+		 statements)))
     (labels ((compiled (code data)
 	       (if code
 		   (or (funcall (first code) data)
