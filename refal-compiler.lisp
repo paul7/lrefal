@@ -14,21 +14,6 @@
 
 ;;; test functions
 
-(defclass refal-module ()
-  ((function-dict
-    :initform (make-hash-table :test #'equalp)
-    :accessor function-dict)
-   (module-name
-    :initform 'main
-    :initarg :module-name
-    :accessor module-name)))
-
-(defparameter *main* (make-instance 'refal-module))
-
-(defun reset-module (module)
-  (with-accessors ((dict function-dict)) module
-    (setf dict (make-hash-table :test #'equalp))))
-
 (defun compile-function (module fname statements)
   (with-accessors ((dict function-dict) 
 		   (name module-name)) module

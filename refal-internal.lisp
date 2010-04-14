@@ -29,6 +29,11 @@
 	   push-scope
 	   pop-scope
 	   var-type
+	   refal-module
+	   reset-module
+	   function-dict
+	   module-name
+	   *main*
 	   s
 	   t
 	   e))
@@ -203,10 +208,25 @@
 (defun empty (scope)
   (zerop (length (active-scope scope))))
 
+(defclass refal-module ()
+  ((function-dict
+    :initform (make-hash-table :test #'equalp)
+    :accessor function-dict)
+   (module-name
+    :initform 'main
+    :initarg :module-name
+    :accessor module-name)))
+
+(defparameter *main* (make-instance 'refal-module))
+
+(defun reset-module (module)
+  (with-accessors ((dict function-dict)) module
+    (setf dict (make-hash-table :test #'equalp))))
+
 (defclass refal-funcall ()
   ((module
     :initarg :module
-    :initform rtrans::*main*
+    :initform *main*
     :accessor module)
    (function-name
     :initarg :function-name
