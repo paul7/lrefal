@@ -9,6 +9,7 @@
   (:export string->scope 
 	   string->pattern
 	   string->statement
+	   string->function
 	   data->pattern
 	   interpolate))
 
@@ -97,7 +98,7 @@
 
 (deftoken refal-delimiter (src)
   (or (refal-space src) 
-      (one-of src '(#\) #\( #\< #\> ))))
+      (one-of src '(#\) #\( #\< #\> #\{ #\} ))))
 
 (deftoken refal-word-char (src)
   (if (not (or (refal-delimiter src)
@@ -116,6 +117,12 @@
 
 (deftoken refal-close-funcall (src)
   (exactly src #\> ))
+
+(deftoken refal-open-block (src)
+  (exactly src #\{ ))
+
+(deftoken refal-close-block (src)
+  (exactly src #\} ))
 
 (deftoken refal-separator (src)
   (exactly src #\= ))
@@ -154,6 +161,7 @@
 (deftoken refal-inner (src)
   (not (or (refal-close-parenthesis src)
 	   (refal-close-funcall src)
+	   (refal-close-block src)
 	   (refal-separator src)
 	   (refal-statement-terminator src))))
 
@@ -167,18 +175,21 @@
      nil)
     (t t)))
 
-(defmacro deftoken-sequence (name (src &rest args) 
+(defmacro deftoken-sequence (name (src &rest args) constructor
 			     &body body)
-  (with-gensyms (result)
+  (with-gensyms (result token)
     `(deftoken ,name (,src ,@args)
        (let ((,result nil))
 	 (do ()
 	     ((progn
 		(refal-skip-spaces src)
 		(refal-check-end ,src))
-	      (data->pattern (nreverse ,result)))
-	   (push (progn 
-		   ,@body) ,result))))))
+	      (funcall ,constructor (nreverse ,result)))
+	   (let ((,token (progn 
+			   ,@body)))
+	     (if ,token
+		 (push ,token ,result)
+		 (return nil))))))))
 
 (defmacro defblock (name 
 		    (src &rest args) 
@@ -188,12 +199,13 @@
 		    &optional (bad `(error "expected closing token")))
   (with-gensyms (subexpr)
     `(deftoken ,name (,src ,@args)
+       (refal-skip-spaces src)
        (and (,open ,src)
 	    (let ((,subexpr (,body ,src ,@args)))
-	      (if (and ,subexpr 
-		       (,close ,src))
-		  ,subexpr
-		  ,bad))))))
+	      (if ,subexpr 
+		  (if (,close ,src)
+		      ,subexpr
+		      ,bad)))))))
 
 (defblock refal-subexpr 
     (src) 
@@ -202,7 +214,7 @@
    refal-close-parenthesis)
   (error "expected )"))
   
-(deftoken-sequence refal-expr (src)
+(deftoken-sequence refal-expr (src) #'data->scope
   (or (refal-subexpr src)
       (refal-char src)))
 
@@ -245,15 +257,14 @@
    refal-close-funcall)
   (error "expected >"))
   
-(defblock refal-subpattern 
-    (src dict)
+(defblock refal-subpattern (src dict)
   (refal-open-parenthesis 
    refal-pattern
    refal-close-parenthesis)
   (error "expected )"))
 
 (deftoken-sequence refal-pattern 
-    (src &optional (dict (make-hash-table :test #'equalp)))
+    (src &optional (dict (make-hash-table :test #'equalp))) #'data->pattern
   (or (refal-subpattern src dict)
       (refal-funcall src dict)
       (refal-var src dict)
@@ -265,7 +276,27 @@
     (if (refal-separator src)
 	(let ((right-pattern (refal-pattern src dict)))
 	  (if (refal-statement-terminator src)
-	      (list left-pattern right-pattern dict))))))
+	      (list :left left-pattern :right right-pattern :dict dict))))))
+
+(deftoken refal-function-header (src)
+  (refal-id src))
+
+(deftoken-sequence refal-funbody (src) #'identity 
+  (refal-statement src))
+
+(defblock refal-block (src)
+  (refal-open-block
+   refal-funbody
+   refal-close-block)
+  (error "expected }"))
+
+(deftoken refal-function (src)
+  (let ((fname (refal-function-header src)))
+    (if fname
+	(let ((fbody (refal-block src)))
+	  (if (test fbody)
+	      (list :fname fname
+		    :statements fbody))))))
 
 ;; make refal-scope compatible atom list of the string
 (defun string->scope (string)
@@ -289,6 +320,10 @@
 (defun string->statement (string)
   (let ((src (make-source string)))
     (refal-statement src)))
+
+(defun string->function (string)
+  (let ((src (make-source string)))
+    (refal-function src)))
 
 (defun data->pattern (data)
   (make-instance 'refal-pattern :data data))
