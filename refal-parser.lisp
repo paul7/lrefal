@@ -155,6 +155,22 @@
 (deftoken-collect refal-skip-spaces (src)
   (refal-space src))
 
+(deftoken refal-digit (src)
+  (digit-char-p (refal-char src)))
+
+(deftoken-collect refal-digits (src)
+  (refal-digit src))
+
+(defun digits->integer (digits &optional (accum 0))
+  (if digits
+      (digits->integer (cdr digits) (+ (* 10 accum) (car digits)))
+      accum))
+
+(deftoken refal-integer (src)
+  (let ((digits (refal-digits src)))
+    (if digits
+	(digits->integer digits))))
+
 (deftoken refal-empty (src)
   (refal-skip-spaces src)
   (refal-end-of-stream src))
@@ -225,10 +241,12 @@
 (deftoken-sequence refal-expr (src) 
     #'data->scope #'refal-expression-char
   (or (refal-subexpr src)
+      (refal-integer src)
       (refal-char src)))
 
 (deftoken refal-literal (src)
-  (let ((word (refal-word src)))
+  (let ((word (or (refal-integer src) 
+		  (refal-word src))))
     (if word
 	(make-instance 'refal-e-var :value word))))
 
