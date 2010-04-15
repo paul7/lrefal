@@ -10,6 +10,7 @@
 	   string->pattern
 	   string->statement
 	   string->function
+	   string->program
 	   data->pattern
 	   interpolate))
 
@@ -301,12 +302,17 @@
   (error "expected }"))
 
 (deftoken refal-function (src)
+  (refal-skip-spaces src)
   (let ((fname (refal-function-header src)))
     (if fname
 	(let ((fbody (refal-block src)))
 	  (if fbody
 	      (list :fname fname
-		    :statements fbody))))))
+		    :statements fbody)
+	      (error (format nil "syntax error in function ~a" fname)))))))
+
+(deftoken-collect refal-program (src)
+  (refal-function src))
 
 ;; make refal-scope compatible atom list of the string
 (defun string->scope (string)
@@ -334,6 +340,10 @@
 (defun string->function (string)
   (let ((src (make-source string)))
     (refal-function src)))
+
+(defun string->program (string)
+  (let ((src (make-source string)))
+    (refal-program src)))
 
 (defun data->pattern (data)
   (make-instance 'refal-pattern :data data))

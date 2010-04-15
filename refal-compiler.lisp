@@ -14,20 +14,11 @@
 
 ;;; test functions
 
-(defclass refal-module ()
-  ((function-dict
-    :initform (make-hash-table :test #'equalp)
-    :accessor function-dict)
-   (module-name
-    :initform 'main
-    :initarg :module-name
-    :accessor module-name)))
-
-(defparameter *main* (make-instance 'refal-module))
-
-(defun reset-module (module)
-  (with-accessors ((dict function-dict)) module
-    (setf dict (make-hash-table :test #'equalp))))
+(defun compile-program (module source)
+  (let ((functions (string->program source)))
+    (mapc #'(lambda (fun)
+	      (compile-function module fun))
+	  functions)))
 
 (defun compile-function (module function-info)
   (let ((fname (getf function-info :fname))
@@ -57,7 +48,8 @@
     (labels ((compiled (code data)
 	       (if code
 		   (or (funcall (first code) data)
-		       (compiled (rest code) data)))))
+		       (compiled (rest code) data))
+		   (error "no match"))))
       #'(lambda (data)
 	  (compiled compiled-statements data)))))
 	       
