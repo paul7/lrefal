@@ -223,6 +223,14 @@
   (with-accessors ((dict function-dict)) module
     (setf dict (make-hash-table :test #'equalp))))
 
+(defmethod print-object ((module refal-module) stream)
+  (print-unreadable-object (module stream :type t :identity t)
+    (format stream "~{~a ~}" 
+	    (loop 
+	       for name 
+	       being each hash-key in (function-dict module)
+	       collect name))))
+
 (defclass refal-funcall ()
   ((module
     :initarg :module
