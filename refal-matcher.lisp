@@ -57,17 +57,16 @@
 
 (defmethod match-var ((first refal-e-var) rest scope
 		      &optional (next-op (constantly t)))
-  (let ((bound (bound first)))
-    (if bound
-	(let ((size (length (value first))))
-	  (if (match-size first scope size)
-	      (match-pattern rest (shift-scope scope size) next-op)))
-	(do ((size 0 (1+ size)))
-	    ((not (match-size first scope size))
-	     (unbind-var first))
-	  (if (match-pattern rest (shift-scope scope size) next-op)
-	      (return t)
-	      (unbind-var first))))))
+  (if (bound first)
+      (let ((size (length (value first))))
+	(if (match-size first scope size)
+	    (match-pattern rest (shift-scope scope size) next-op)))
+      (do ((size 0 (1+ size)))
+	  ((not (match-size first scope size))
+	   (unbind-var first))
+	(if (match-pattern rest (shift-scope scope size) next-op)
+	    (return t)
+	    (unbind-var first)))))
 
 (defmethod match-var ((first refal-pattern) rest scope
 		       &optional (next-op (constantly t)))

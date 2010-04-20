@@ -30,7 +30,7 @@
 			fname module)))
       (setf (gethash fname dict) (compile-multiple statements)))))
 
-(defun refal-call (module fname data)
+(defun refal-call (module fname &optional (data (string->scope "")))
   (with-accessors ((dict function-dict) 
 		   (name module-name)) module
     (let ((func (gethash fname dict)))
@@ -62,10 +62,9 @@
 		  (funcall fn var))))
       #'(lambda (data)
 	  (do-vars #'push-scope)
-	  (let ((res (if (match-pattern pattern data)
-		       (interpolate construct))))
-	    (do-vars #'pop-scope)
-	    res)))))
+	  (unwind-protect (if (match-pattern pattern data)
+			      (interpolate construct))
+	    (do-vars #'pop-scope))))))
 
 (defmethod interpolate ((call refal-funcall))
   (with-accessors ((module module)
