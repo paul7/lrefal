@@ -1,4 +1,4 @@
-;;;; Refal parser and internal data representation
+;;;; Refal parser
 ;;;; (c) paul7, 2010
 
 (defpackage :net.paul7.refal.parser
