@@ -27,7 +27,7 @@
     :accessor size
     :initform 0)))
 
-(defmethod initialize-instance :after ((src refal-source) &key)
+(defmethod initialize-instance :after ((src token-source) &key)
   (with-accessors ((data data) 
 		   (size size)) src
     (setf size (length data))))
@@ -64,47 +64,71 @@
   (with-accessors ((src-pos src-pos)) src
     (setf src-pos (load-pos src))))
 
-(defmacro deftoken (name (src &rest args)
-		    &body body)
-  (with-gensyms (result options success)
+;; body should return list formed as follows:
+;; (:result (token*) :option1 value1 ...)
+(defmacro deftoken (name (src &rest args) 
+			    &body body)
+  (with-gensyms (result)
     `(defun ,name (,src ,@args)
        (try-token ,src)
-       (multiple-value-bind (,result ,options) (progn ,@body)
-	 (let ((,success (or (getf ,options :success) ,result)))
-	   (if ,success
-	       (accept-token ,src)
-	       (reject-token ,src))
-	   (values ,result ,options))))))
+       (let ((,result (progn
+			,@body)))
+	 (if ,result
+	     (accept-token ,src)
+	     (reject-token ,src))
+	 ,result))))
+
+;; single token
+;; body returns just token itself
+(defmacro deftoken-basic (name (src &rest args)
+		    &body body)
+  (with-gensyms (result)
+    `(deftoken ,name (,src ,@args)
+       (let ((,result (progn
+			,@body)))
+	 (if ,result
+	     (list :result ,result))))))
 
 (defmacro deftoken-collect (name (src &rest args)
 			    &body body)
-  (with-gensyms (result token options splice success ignore end each)
+  (with-gensyms (result each)
     `(deftoken ,name (,src ,@args)
-       (do ((,result nil))
-	   ()
-	 (multiple-value-bind (,token ,options) (progn ,@body)
-	   (let ((,splice (getf ,options :splice))
-		 (,success (or (getf ,options :success) ,token))
-		 (,ignore (getf ,options :ignore))
-		 (,end (getf ,options :end)))
-	     (if ,end
-		 (return (values (nreverse ,result) '(:success t))))
-	     (if ,success
-		 (if (not ,ignore)
-		     (if ,splice
-			 (dolist (,each ,token)
-			   (push ,each ,result))
-			 (push ,token ,result)))
-		 (return nil))))))))
+       (do ((,each (progn 
+		     ,@body)
+		   (progn
+		     ,@body))
+	    (,result nil))
+	   ((or (not ,each)
+		(getf ,each :end))
+	    (list :result (nreverse ,result)))
+	 (push (unwrap ,each) ,result)))))
+     
+(defmacro defmodifier (name (token &rest args) plist)
+  `(defun ,name (,token ,@args)
+     (if ,token
+	 (join-plists ,token ',plist))))
+
+(defmodifier token-end (token)
+  (:end t))
+
+(defmodifier token-splice (token)
+  (:splice t))
+
+(defun unwrap (token)
+  (getf token :result))
+
+(defun not-empty (token)
+  (if (unwrap token)
+      token))
 
 ;;; Refal syntax
 
-(deftoken refal-char (src)
+(deftoken-basic refal-char (src)
   (read-source src))
 
-(deftoken exactly (src char)
+(deftoken-basic exactly (src char)
   (let ((next (refal-char src)))
-    (if (and next (char-equal char next))
+    (if (and next (char-equal char (unwrap next)))
 	char)))
 
 (deftoken one-of (src chars)
@@ -155,3 +179,31 @@
 (deftoken refal-bad (src)
   (not (characterp (read-source src))))
 
+(deftoken-collect refal-word (src) 
+  (refal-word-char src))
+
+(deftoken-collect refal-spaces (src)
+  (refal-space src))
+
+(defmacro refal-skip-spaces (src)
+  `(not-empty (refal-spaces ,src)))
+
+(deftoken-basic refal-digit (src)
+  (digit-char-p (unwrap (refal-char src))))
+
+(deftoken-collect refal-digits (src)
+  (refal-digit src))
+
+(defun digits->integer (digits &optional (accum 0))
+  (if digits
+      (digits->integer (cdr digits) (+ (* 10 accum) (car digits)))
+      accum))
+
+(deftoken refal-integer (src)
+  (let ((digits (refal-digits src)))
+    (if digits
+	(digits->integer (unwrap digits)))))
+
+(deftoken refal-empty (src)
+  (refal-skip-spaces src)
+  (refal-end-of-stream src))
