@@ -65,7 +65,7 @@
     (setf src-pos (load-pos src))))
 
 ;; body should return list formed as follows:
-;; (:result (token*) :option1 value1 ...)
+;; (:token (token*) :option1 value1 ...)
 (defmacro deftoken (name (src &rest args) 
 			    &body body)
   (with-gensyms (result)
@@ -87,7 +87,7 @@
        (let ((,result (progn
 			,@body)))
 	 (if ,result
-	     (list :result ,result))))))
+	     (list :token ,result))))))
 
 (defmacro deftoken-collect (name (src &rest args)
 			    &body body)
@@ -100,7 +100,7 @@
 	    (,result nil))
 	   ((or (not ,each)
 		(getf ,each :end))
-	    (list :result (nreverse ,result)))
+	    (list :token (nreverse ,result)))
 	 (push (unwrap ,each) ,result)))))
      
 (defmacro defmodifier (name (token &rest args) plist)
@@ -115,7 +115,7 @@
   (:splice t))
 
 (defun unwrap (token)
-  (getf token :result))
+  (getf token :token))
 
 (defun not-empty (token)
   (if (unwrap token)
