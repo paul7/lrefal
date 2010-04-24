@@ -10,11 +10,26 @@
 
 (in-package :net.paul7.refal.parser)
 
-(defun register-builtin (name))
-
 ;; define & register builtin function
 (defmacro defbuiltin (name (scope)
 		      &body body)
-  (register-builtin name)
-  `(defun ,name (,scope)
-     ,@body))
+  `(setf (refal-entry *global* ,name)
+	 #'(lambda (,scope)
+	     ,@body)))
+	    
+(defmacro defapply (name function)
+  (with-gensyms (scope)
+    `(defbuiltin ,name (,scope)
+       (data->scope (mklist (apply ,function (data ,scope)))))))
+ 
+(defbuiltin "ident" (scope)
+  scope)
+
+(defapply "+" #'+)
+
+(defapply "-" #'-)
+
+(defapply "*" #'*)
+
+(defapply "=" #'=)
+

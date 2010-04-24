@@ -23,10 +23,10 @@
 (defun compile-function (module function-info)
   (let ((fname (getf function-info :fname))
 	(statements (getf function-info :statements)))
-    (setf (refal-function module fname) (compile-multiple statements))))
+    (setf (refal-entry module fname) (compile-multiple statements))))
 
 (defun refal-call (module fname &optional (data (string->scope "")))
-  (funcall (refal-function module fname) data))
+  (funcall (refal-entry module fname) data))
 
 ;; compile simple statement
 (defun compile-multiple (statements)

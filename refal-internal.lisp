@@ -33,7 +33,7 @@
 	   reset-module
 	   function-dict
 	   module-name
-	   refal-function
+	   refal-entry
 	   *main*
 	   *global*
 	   s
@@ -227,9 +227,30 @@
   (with-accessors ((dict function-dict)) module
     (setf dict (make-hash-table :test #'equalp))))
 
+(defun refal-entry (module fname)
+  (with-accessors ((dict function-dict) 
+		   (name module-name)) module
+    (let ((func (gethash fname dict)))
+      (or func
+	  (if (equalp name "$$global")
+	      nil
+	      (let ((func (refal-entry *global* fname)))
+		(or func
+		    (error (format nil "no function ~a in module ~a" 
+				   fname module)))))))))
+
+(defmethod (setf refal-entry) (code module fname)
+  (with-accessors ((dict function-dict) 
+		   (name module-name)) module
+    (if (gethash fname dict)
+	(warn (format nil "duplicate function ~a in module ~a" 
+		      fname module)))
+    (setf (gethash fname dict) code)))
+
 (defmethod print-object ((module refal-module) stream)
-  (print-unreadable-object (module stream :type t :identity t)
-    (format stream "~{~a ~}" 
+  (print-unreadable-object (module stream :identity t)
+    (format stream "~a ~a" 
+	    (module-name module)
 	    (loop 
 	       for name 
 	       being each hash-key in (function-dict module)
@@ -249,23 +270,3 @@
     :initform (make-instance 'refal-pattern 
 			     :data nil)
     :accessor function-argument)))
-
-(defun refal-function (module fname)
-  (with-accessors ((dict function-dict) 
-		   (name module-name)) module
-    (let ((func (gethash fname dict)))
-      (or func
-	  (if (equalp name "$$global")
-	      nil
-	      (let ((func (refal-function *global* fname)))
-		(or func
-		    (error (format nil "no function ~a in module ~a" 
-				   fname module)))))))))
-
-(defmethod (setf refal-function) (code module fname)
-  (with-accessors ((dict function-dict) 
-		   (name module-name)) module
-    (if (gethash fname dict)
-	(warn (format nil "duplicate function ~a in module ~a" 
-		      fname module)))
-    (setf (gethash fname dict) code)))
