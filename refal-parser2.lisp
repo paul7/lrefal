@@ -6,7 +6,8 @@
   (:use :common-lisp
 	:net.paul7.utility
 	:net.paul7.refal.internal)
-  (:export))
+  (:export string->program
+	   interpolate))
 
 (in-package :net.paul7.refal.parser2)
 
@@ -249,7 +250,7 @@
 
 (deftoken refal-empty (src)
   (refal-skip-spaces src)
-  (refal-end-of-stream src))
+  (end-of-stream src))
 
 (defblock refal-subexpr 
     (src) 
@@ -274,7 +275,7 @@
 (deftoken-basic refal-literal (src)
   (let ((word (or (refal-integer src) 
 		  (refal-word src))))
-    (if word
+    (if (not-empty word)
 	(make-instance 'refal-e-var :value (mklist (unwrap word))))))
 
 (deftoken-basic refal-id (src)
@@ -298,7 +299,7 @@
 		       (make-uniform-type type)) old-var)
 		  (t (error "type mismatch")))))))))
 
-(deftoken refal-fun-and-args (src dict)
+(deftoken-basic refal-fun-and-args (src dict)
   (let ((id (refal-id src)))
     (if id
 	(let ((arg (refal-pattern src dict)))
@@ -328,16 +329,68 @@
 	    (refal-close-block src)
 	    (refal-separator src)
 	    (refal-statement-terminator src)))
-      (refal-skip-spaces src)
-      (refal-subpattern src dict)
-      (refal-funcall src dict)
-      (refal-integer src)
-      (refal-literal src)))
-
-#+never(deftoken-sequence refal-pattern 
-    (src &optional (dict (make-hash-table :test #'equalp))) 
-    #'data->pattern #'refal-expression-char
-  (or (refal-subpattern src dict)
+      (refal-skip-spaces src) 
       (refal-funcall src dict)
       (refal-var src dict)
       (refal-literal src)))
+
+(deftoken-basic refal-statement 
+    (src &optional (dict (make-hash-table :test #'equalp)))
+  (let ((left-pattern (refal-pattern src dict)))
+    (if (refal-separator src)
+	(let ((right-pattern (refal-pattern src dict)))
+	  (if (refal-statement-terminator src)
+	      (list :left (unwrap left-pattern)
+		    :right (unwrap right-pattern)
+		    :dict dict))))))
+
+(deftoken refal-function-header (src)
+  (refal-id src))
+
+(deftoken-list refal-funbody (src) 
+  (or (stop src
+	(or (refal-close-parenthesis src)
+	    (refal-close-funcall src)
+	    (refal-close-block src)
+	    (refal-statement-terminator src)))
+      (refal-statement src)))
+
+(defblock refal-block (src)
+  ((progn
+     (refal-skip-spaces src)
+     (refal-open-block src))
+   (refal-funbody src)
+   (progn 
+     (refal-skip-spaces src)
+     (refal-close-block src)))
+  (error "expected }"))
+
+(deftoken-basic refal-function (src)
+  (refal-skip-spaces src)
+  (let ((fname (refal-function-header src)))
+    (if fname
+	(let ((fbody (refal-block src)))
+	  (if fbody
+	      (list :fname (unwrap fname)
+		    :statements (unwrap fbody))
+	      (error (format nil "syntax error in function ~a" 
+			     (unwrap fname))))))))
+
+(deftoken-list refal-program (src)
+  (or (refal-skip-spaces src)
+      (refal-function src)))
+
+(defun string->program (string)
+  (let ((src (make-source string)))
+    (unwrap (refal-program src))))
+
+(defgeneric interpolate (object))
+
+(defmethod interpolate ((var refal-var))
+  (if (bound var)
+      (value var)
+      (error (format nil "~a is unbound" var))))
+  
+(defmethod interpolate ((pattern refal-pattern))
+  (data->scope (mapcan (compose #'copy-list #'mklist #'interpolate)
+		       (data pattern))))
