@@ -66,6 +66,27 @@
   (with-accessors ((src-pos src-pos)) src
     (setf src-pos (load-pos src))))
 
+(defmacro defmodifier (name (token &rest args) plist)
+  `(defun ,name (,token ,@args)
+     (if ,token
+	 (join-plists ,token ',plist))))
+
+(defmodifier token-end (token)
+  (:end t))
+
+(defmodifier token-splice (token)
+  (:splice t))
+
+(defmodifier token-ignore (token)
+  (:ignore t))
+
+(defun unwrap (token)
+  (getf token :token))
+
+(defun not-empty (token)
+  (if (unwrap token)
+      token))
+
 ;; body should return list formed as follows:
 ;; (:token (token*) :option1 value1 ...)
 (defmacro deftoken (name (src &rest args) 
@@ -140,27 +161,6 @@
 		     ,@body)
      (reject-token ,src)))
      
-(defmacro defmodifier (name (token &rest args) plist)
-  `(defun ,name (,token ,@args)
-     (if ,token
-	 (join-plists ,token ',plist))))
-
-(defmodifier token-end (token)
-  (:end t))
-
-(defmodifier token-splice (token)
-  (:splice t))
-
-(defmodifier token-ignore (token)
-  (:ignore t))
-
-(defun unwrap (token)
-  (getf token :token))
-
-(defun not-empty (token)
-  (if (unwrap token)
-      token))
-
 (defmacro stop (src &body body)
   `(lookup ,src (token-end ,@body)))
 
@@ -169,18 +169,26 @@
   `(if ,token-form
        ,error-form))
 
-(defmacro with-token ((token form) 
+(defmacro with-token (var-def
 		      &body body)
   (with-gensyms (var)
-    `(let ((,var ,form))
-       (if ,var
-	   (let ((,token (unwrap ,var)))
-	     ,@body)))))
-
+    (case (length var-def)
+      (1 (let ((form (car var-def)))
+	   `(let ((,var ,form))
+	      (if ,var
+		  ,@body))))
+      (2 (destructuring-bind (token form) var-def
+	   `(let ((,var ,form))
+	      (if ,var
+		  (let ((,token (unwrap ,var)))
+		    ,@body)))))
+      (otherwise (error "bad variable definition")))))
+  
 (defmacro with-tokens* (token-list 
 			&body body)
   (if (null token-list)
-      body
+      `(progn 
+	 ,@body)
       `(with-token ,(first token-list)
 	 (with-tokens* ,(rest token-list)
 	   ,@body))))
@@ -191,8 +199,8 @@
   (read-source src))
 
 (deftoken-basic exactly (src char)
-  (let ((next (refal-char src)))
-    (if (and next (char-equal char (unwrap next)))
+  (with-token (next (refal-char src))
+    (if (char-equal char next)
 	char)))
 
 (deftoken one-of (src chars)
@@ -253,7 +261,8 @@
   `(token-ignore (not-empty (refal-spaces ,src))))
 
 (deftoken-basic refal-digit (src)
-  (digit-char-p (unwrap (refal-char src))))
+  (with-token (next (refal-char src))
+    (digit-char-p next)))
 
 (deftoken-list refal-digits (src)
   (refal-digit src))
@@ -301,29 +310,24 @@
     (convert-sequence id 'string)))
 
 (deftoken-basic refal-var (src dict)
-  (let ((type (one-of src '(#\e #\t #\s))))
-    (if (and type (exactly src #\.))
-	(let ((id (refal-id src)))
-	  (if id
-	      (let* ((id (unwrap id))
-		     (type (unwrap type))
-		     (old-var (gethash id dict)))
-		(cond
-		  ((not old-var) 
-		   (setf (gethash id dict)
-			 (make-var type id)))
-		  ((eq (var-type old-var) 
-		       (make-uniform-type type)) old-var)
-		  (t (error "type mismatch")))))))))
+  (with-tokens* ((type (one-of src '(#\e #\t #\s)))
+		 ((exactly src #\.))
+		 (id (refal-id src)))
+    (let ((old-var (gethash id dict)))
+      (cond
+	((not old-var) 
+	 (setf (gethash id dict)
+	       (make-var type id)))
+	((eq (var-type old-var) 
+	     (make-uniform-type type)) old-var)
+	(t (error "type mismatch"))))))
 
 (deftoken-basic refal-fun-and-args (src dict)
-  (let ((id (refal-id src)))
-    (if id
-	(let ((arg (refal-pattern src dict)))
-	  (if arg
-	      (make-instance 'refal-funcall 
-			     :function-name (unwrap id)
-			     :function-argument (unwrap arg)))))))
+  (with-tokens* ((id (refal-id src))
+		 (arg (refal-pattern src dict)))
+    (make-instance 'refal-funcall 
+		   :function-name id
+		   :function-argument  arg)))
 
 (defblock refal-funcall 
     (src dict)
@@ -354,13 +358,13 @@
 
 (deftoken-basic refal-statement 
     (src &optional (dict (make-hash-table :test #'equalp)))
-  (let ((left-pattern (refal-pattern src dict)))
-    (if (refal-separator src)
-	(let ((right-pattern (refal-pattern src dict)))
-	  (if (refal-statement-terminator src)
-	      (list :left (unwrap left-pattern)
-		    :right (unwrap right-pattern)
-		    :dict dict))))))
+  (with-tokens* ((left-pattern (refal-pattern src dict))
+		 ((refal-separator src))
+		 (right-pattern (refal-pattern src dict))
+		 ((refal-statement-terminator src)))
+    (list :left left-pattern
+	  :right right-pattern
+	  :dict dict)))
 
 (deftoken refal-function-header (src)
   (refal-id src))
@@ -385,14 +389,11 @@
 
 (deftoken-basic refal-function (src)
   (refal-skip-spaces src)
-  (let ((fname (refal-function-header src)))
-    (if fname
-	(let ((fbody (refal-block src)))
-	  (if fbody
-	      (list :fname (unwrap fname)
-		    :statements (unwrap fbody))
-	      (error (format nil "syntax error in function ~a" 
-			     (unwrap fname))))))))
+  (with-token (fname (refal-function-header src))
+    (or (with-token (fbody (refal-block src))
+	  (list :fname fname
+		:statements fbody))
+	(error (format nil "syntax error in function ~a" fname)))))
 
 (deftoken-list refal-program (src)
   (or (refal-skip-spaces src)
@@ -400,16 +401,17 @@
 
 ;; make refal-scope compatible atom list of the string
 (defun string->scope (string)
-  (let* ((src (make-source string))
-	 (expr (refal-expr src)))
-    (if (refal-empty src)
-	(unwrap expr)
-	(error (format nil "unexpected ~a" (refal-char src))))))
+  (let ((src (make-source string)))
+    (with-token (expr (refal-expr src))
+      (if (refal-empty src)
+	  expr
+	  (error (format nil "unexpected ~a" 
+			 (unwrap (refal-char src))))))))
 
 ;; parse program
 (defun string->program (string)
-  (let ((src (make-source string)))
-    (unwrap (refal-program src))))
+  (with-token (program (refal-program (make-source string)))
+    program))
 
 (defgeneric interpolate (object))
 
