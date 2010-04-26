@@ -177,11 +177,13 @@
 	   `(let ((,var ,form))
 	      (if ,var
 		  ,@body))))
-      (2 (destructuring-bind (token form) var-def
-	   `(let ((,var ,form))
-	      (if ,var
-		  (let ((,token (unwrap ,var)))
-		    ,@body)))))
+      ((2 3) (destructuring-bind (token form 
+					&optional else-form) var-def
+	       `(let ((,var ,form))
+		  (if ,var
+		      (let ((,token (unwrap ,var)))
+			,@body)
+		      ,else-form))))
       (otherwise (error "bad variable definition")))))
   
 (defmacro with-tokens* (token-list 
@@ -389,11 +391,12 @@
 
 (deftoken-basic refal-function (src)
   (refal-skip-spaces src)
-  (with-token (fname (refal-function-header src))
-    (or (with-token (fbody (refal-block src))
-	  (list :fname fname
-		:statements fbody))
-	(error (format nil "syntax error in function ~a" fname)))))
+  (with-tokens* ((fname (refal-function-header src))
+		 (fbody (refal-block src)
+			(error (format nil "syntax error in function ~a" 
+				       fname))))
+    (list :fname fname
+	  :statements fbody)))
 
 (deftoken-list refal-program (src)
   (or (refal-skip-spaces src)
