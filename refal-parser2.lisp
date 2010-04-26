@@ -7,6 +7,7 @@
 	:net.paul7.utility
 	:net.paul7.refal.internal)
   (:export string->program
+	   string->scope
 	   interpolate))
 
 (in-package :net.paul7.refal.parser2)
@@ -329,6 +330,7 @@
 	    (refal-close-block src)
 	    (refal-separator src)
 	    (refal-statement-terminator src)))
+      (refal-subpattern src dict)
       (refal-skip-spaces src) 
       (refal-funcall src dict)
       (refal-var src dict)
@@ -380,6 +382,15 @@
   (or (refal-skip-spaces src)
       (refal-function src)))
 
+;; make refal-scope compatible atom list of the string
+(defun string->scope (string)
+  (let* ((src (make-source string))
+	 (expr (refal-expr src)))
+    (if (refal-empty src)
+	(unwrap expr)
+	(error (format nil "unexpected ~a" (refal-char src))))))
+
+;; parse program
 (defun string->program (string)
   (let ((src (make-source string)))
     (unwrap (refal-program src))))

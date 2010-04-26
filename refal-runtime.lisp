@@ -8,7 +8,7 @@
 	:net.paul7.refal.internal)
   (:export))
 
-(in-package :net.paul7.refal.parser)
+(in-package :net.paul7.refal.runtime)
 
 ;; define & register builtin function
 (defmacro defbuiltin (name (scope)
