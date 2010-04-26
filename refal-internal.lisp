@@ -108,33 +108,30 @@
 (defgeneric var-type (var))
 
 (defmethod var-type ((var refal-e-var))
-  'e)
+  #\e)
 
 (defmethod var-type ((var refal-t-var))
-  't)
+  #\t)
 
 (defmethod var-type ((var refal-s-var))
-  's)
+  #\s)
 
 ;; make unbound Refal variable of given type and name
 (defun make-uniform-type (type)
   (case type
-    (#\s 's)
-    (#\S 's)
-    (s 's)
-    (#\t 't)
-    (#\T 't)
-    (t 't)
-    (#\e 'e)
-    (#\E 'e)
-    (e 'e)
+    (#\s #\s)
+    (#\S #\s)
+    (#\t #\t)
+    (#\T #\t)
+    (#\e #\e)
+    (#\E #\e)
     (otherwise  (error "Bad type"))))
   
 (defun make-var (type name)
   (make-instance (case (make-uniform-type type)
-		   (s 'refal-s-var)
-		   (t 'refal-t-var)
-		   (e 'refal-e-var))
+		   (#\s 'refal-s-var)
+		   (#\t 'refal-t-var)
+		   (#\e 'refal-e-var))
 		 :name name))    
 
 ;;; utilities for variables
