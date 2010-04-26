@@ -169,6 +169,22 @@
   `(if ,token-form
        ,error-form))
 
+(defmacro with-token ((token form) 
+		      &body body)
+  (with-gensyms (var)
+    `(let ((,var ,form))
+       (if ,var
+	   (let ((,token (unwrap ,var)))
+	     ,@body)))))
+
+(defmacro with-tokens* (token-list 
+			&body body)
+  (if (null token-list)
+      body
+      `(with-token ,(first token-list)
+	 (with-tokens* ,(rest token-list)
+	   ,@body))))
+
 ;;; Refal syntax
 
 (deftoken-basic refal-char (src)
@@ -224,8 +240,11 @@
 (deftoken refal-bad (src)
   (not (characterp (read-source src))))
 
-(deftoken-list refal-word (src) 
+(deftoken-list refal-chars (src) 
   (refal-word-char src))
+
+(defmacro refal-word (src)
+  `(not-empty (refal-chars ,src)))
 
 (deftoken-list refal-spaces (src)
   (refal-space src))
@@ -245,9 +264,8 @@
       accum))
 
 (deftoken-basic refal-integer (src)
-  (let ((digits (unwrap (refal-digits src))))
-    (if digits
-	(digits->integer digits))))
+  (with-token (digits (not-empty (refal-digits src)))
+    (digits->integer digits)))
 
 (deftoken refal-empty (src)
   (refal-skip-spaces src)
@@ -274,15 +292,13 @@
       (refal-char src)))
 
 (deftoken-basic refal-literal (src)
-  (let ((word (or (refal-integer src) 
-		  (refal-word src))))
-    (if (not-empty word)
-	(make-instance 'refal-e-var :value (mklist (unwrap word))))))
+  (with-token (word (or (refal-integer src)
+			(refal-word src)))
+    (make-instance 'refal-e-var :value (mklist word))))
 
 (deftoken-basic refal-id (src)
-  (let ((id (refal-word src)))
-    (if id
-	(convert-sequence (unwrap id) 'string))))
+  (with-token (id (refal-word src))
+    (convert-sequence id 'string)))
 
 (deftoken-basic refal-var (src dict)
   (let ((type (one-of src '(#\e #\t #\s))))
