@@ -23,21 +23,10 @@
 (defun compile-function (module function-info)
   (let ((fname (getf function-info :fname))
 	(statements (getf function-info :statements)))
-    (with-accessors ((dict function-dict) 
-		     (name module-name)) module
-      (if (gethash fname dict)
-	  (warn (format nil "duplicate function ~a in module ~a" 
-			fname module)))
-      (setf (gethash fname dict) (compile-multiple statements)))))
+    (setf (refal-entry module fname) (compile-multiple statements))))
 
 (defun refal-call (module fname &optional (data (string->scope "")))
-  (with-accessors ((dict function-dict) 
-		   (name module-name)) module
-    (let ((func (gethash fname dict)))
-      (if func
-	  (funcall func data)
-	  (error (format nil "no function ~a in module ~a" 
-			 fname module))))))
+  (funcall (refal-entry module fname) data))
 
 ;; compile simple statement
 (defun compile-multiple (statements)

@@ -33,7 +33,9 @@
 	   reset-module
 	   function-dict
 	   module-name
+	   refal-entry
 	   *main*
+	   *global*
 	   s
 	   t
 	   e))
@@ -106,33 +108,30 @@
 (defgeneric var-type (var))
 
 (defmethod var-type ((var refal-e-var))
-  'e)
+  #\e)
 
 (defmethod var-type ((var refal-t-var))
-  't)
+  #\t)
 
 (defmethod var-type ((var refal-s-var))
-  's)
+  #\s)
 
 ;; make unbound Refal variable of given type and name
 (defun make-uniform-type (type)
   (case type
-    (#\s 's)
-    (#\S 's)
-    (s 's)
-    (#\t 't)
-    (#\T 't)
-    (t 't)
-    (#\e 'e)
-    (#\E 'e)
-    (e 'e)
+    (#\s #\s)
+    (#\S #\s)
+    (#\t #\t)
+    (#\T #\t)
+    (#\e #\e)
+    (#\E #\e)
     (otherwise  (error "Bad type"))))
   
 (defun make-var (type name)
   (make-instance (case (make-uniform-type type)
-		   (s 'refal-s-var)
-		   (t 'refal-t-var)
-		   (e 'refal-e-var))
+		   (#\s 'refal-s-var)
+		   (#\t 'refal-t-var)
+		   (#\e 'refal-e-var))
 		 :name name))    
 
 ;;; utilities for variables
@@ -218,14 +217,37 @@
     :accessor module-name)))
 
 (defparameter *main* (make-instance 'refal-module))
+(defparameter *global* (make-instance 'refal-module 
+				      :module-name "$$global"))
 
 (defun reset-module (module)
   (with-accessors ((dict function-dict)) module
     (setf dict (make-hash-table :test #'equalp))))
 
+(defun refal-entry (module fname)
+  (with-accessors ((dict function-dict) 
+		   (name module-name)) module
+    (let ((func (gethash fname dict)))
+      (or func
+	  (if (equalp name "$$global")
+	      nil
+	      (let ((func (refal-entry *global* fname)))
+		(or func
+		    (error (format nil "no function ~a in module ~a" 
+				   fname module)))))))))
+
+(defmethod (setf refal-entry) (code module fname)
+  (with-accessors ((dict function-dict) 
+		   (name module-name)) module
+    (if (gethash fname dict)
+	(warn (format nil "duplicate function ~a in module ~a" 
+		      fname module)))
+    (setf (gethash fname dict) code)))
+
 (defmethod print-object ((module refal-module) stream)
-  (print-unreadable-object (module stream :type t :identity t)
-    (format stream "~{~a ~}" 
+  (print-unreadable-object (module stream :identity t)
+    (format stream "~a ~a" 
+	    (module-name module)
 	    (loop 
 	       for name 
 	       being each hash-key in (function-dict module)

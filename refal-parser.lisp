@@ -248,7 +248,7 @@
   (let ((word (or (refal-integer src) 
 		  (refal-word src))))
     (if word
-	(make-instance 'refal-e-var :value word))))
+	(make-instance 'refal-e-var :value (mklist word)))))
 
 (deftoken refal-id (src)
   (let ((id (refal-word src)))
