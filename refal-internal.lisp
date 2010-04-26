@@ -28,6 +28,8 @@
 	   unbind-var
 	   push-scope
 	   pop-scope
+	   data->scope 
+	   data->pattern
 	   var-type
 	   refal-module
 	   reset-module
@@ -206,6 +208,12 @@
 
 (defun empty (scope)
   (zerop (length (active-scope scope))))
+
+(defun data->scope (data)
+  (make-instance 'refal-scope :data data))
+
+(defun data->pattern (data)
+  (make-instance 'refal-pattern :data data))
 
 (defclass refal-module ()
   ((function-dict
