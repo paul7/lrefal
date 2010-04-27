@@ -87,6 +87,29 @@
   (if (unwrap token)
       token))
 
+(defmacro with-token ((var-name token-form
+				&key else)
+		      &body body)
+  (with-gensyms (var)
+    (if var-name
+	`(let ((,var ,token-form))
+	   (if ,var
+	       (let ((,var-name (unwrap ,var)))
+		 ,@body)
+	       ,else))
+	`(let ((,var ,token-form))
+	   (if ,var
+	       ,@body)))))
+  
+(defmacro with-tokens* (token-list 
+			&body body)
+  (if (null token-list)
+      `(progn 
+	 ,@body)
+      `(with-token ,(first token-list)
+	 (with-tokens* ,(rest token-list)
+	   ,@body))))
+
 ;; body should return list formed as follows:
 ;; (:token (token*) :option1 value1 ...)
 (defmacro deftoken (name (src &rest args) 
@@ -140,6 +163,21 @@
        #'identity
      ,@body))
 
+#+never(defmacro defblock (name
+		    (src &rest args)
+		    (open-form
+		     body-form
+		     close-form)
+		    &optional (bad-form `(error "expected closing token")))
+  (with-gensyms (subexpr)
+    `(deftoken ,name (,src ,@args)
+       (and ,open-form
+	    (let ((,subexpr ,body-form))
+	      (if ,subexpr
+		  (if ,close-form
+		      ,subexpr
+		      ,bad-form)))))))
+
 (defmacro defblock (name 
 		    (src &rest args) 
 		    (open-form 
@@ -147,13 +185,12 @@
 		     close-form) 
 		    &optional (bad-form `(error "expected closing token")))
   (with-gensyms (subexpr)
-    `(deftoken ,name (,src ,@args)
-       (and ,open-form
-	    (let ((,subexpr ,body-form))
-	      (if ,subexpr 
-		  (if ,close-form
-		      ,subexpr
-		      ,bad-form)))))))
+    `(deftoken-basic ,name (,src ,@args)
+       (with-tokens* ((nil ,open-form)
+		      (,subexpr ,body-form)
+		      (nil ,close-form 
+		       :else ,bad-form))
+	 ,subexpr))))
 
 (defmacro lookup (src &body body)
   `(unwind-protect (progn
@@ -168,32 +205,6 @@
 		   &optional (error-form `(error "invalid source")))
   `(if ,token-form
        ,error-form))
-
-(defmacro with-token (var-def
-		      &body body)
-  (with-gensyms (var)
-    (case (length var-def)
-      (1 (let ((form (car var-def)))
-	   `(let ((,var ,form))
-	      (if ,var
-		  ,@body))))
-      ((2 3) (destructuring-bind (token form 
-					&optional else-form) var-def
-	       `(let ((,var ,form))
-		  (if ,var
-		      (let ((,token (unwrap ,var)))
-			,@body)
-		      ,else-form))))
-      (otherwise (error "bad variable definition")))))
-  
-(defmacro with-tokens* (token-list 
-			&body body)
-  (if (null token-list)
-      `(progn 
-	 ,@body)
-      `(with-token ,(first token-list)
-	 (with-tokens* ,(rest token-list)
-	   ,@body))))
 
 ;;; Refal syntax
 
@@ -313,7 +324,7 @@
 
 (deftoken-basic refal-var (src dict)
   (with-tokens* ((type (one-of src '(#\e #\t #\s)))
-		 ((exactly src #\.))
+		 (nil (exactly src #\.))
 		 (id (refal-id src)))
     (let ((old-var (gethash id dict)))
       (cond
@@ -361,9 +372,9 @@
 (deftoken-basic refal-statement 
     (src &optional (dict (make-hash-table :test #'equalp)))
   (with-tokens* ((left-pattern (refal-pattern src dict))
-		 ((refal-separator src))
+		 (nil (refal-separator src))
 		 (right-pattern (refal-pattern src dict))
-		 ((refal-statement-terminator src)))
+		 (nil (refal-statement-terminator src)))
     (list :left left-pattern
 	  :right right-pattern
 	  :dict dict)))
@@ -393,8 +404,9 @@
   (refal-skip-spaces src)
   (with-tokens* ((fname (refal-function-header src))
 		 (fbody (refal-block src)
-			(error (format nil "syntax error in function ~a" 
-				       fname))))
+			:else (error (format nil 
+					     "syntax error in function ~a" 
+					     fname))))
     (list :fname fname
 	  :statements fbody)))
 
