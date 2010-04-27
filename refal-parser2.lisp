@@ -163,21 +163,6 @@
        #'identity
      ,@body))
 
-#+never(defmacro defblock (name
-		    (src &rest args)
-		    (open-form
-		     body-form
-		     close-form)
-		    &optional (bad-form `(error "expected closing token")))
-  (with-gensyms (subexpr)
-    `(deftoken ,name (,src ,@args)
-       (and ,open-form
-	    (let ((,subexpr ,body-form))
-	      (if ,subexpr
-		  (if ,close-form
-		      ,subexpr
-		      ,bad-form)))))))
-
 (defmacro defblock (name 
 		    (src &rest args) 
 		    (open-form 
