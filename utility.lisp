@@ -12,7 +12,8 @@
 	   convert-sequence
 	   post-incf
 	   sequence-reader
-	   test))
+	   test
+	   join-plists))
 
 (in-package :net.paul7.utility)
 
@@ -61,3 +62,12 @@
     `(let ((,result ,form))
        (format t "TESTING ~a => ~a~%" ',form ,result)
        ,result)))
+
+(defun join-plists (first second)
+  (do ((result (copy-list first))
+       (rest second (cddr rest)))
+      ((not rest)
+       result)
+    (let ((key (car rest))
+	  (value (cadr rest)))
+      (setf (getf result key) value))))
