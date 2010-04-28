@@ -1,4 +1,4 @@
-;;;; Refal parser reworked
+;;;; Refal parser
 ;;;; (c) paul7, 2010
 
 (defpackage :net.paul7.refal.parser
@@ -99,7 +99,8 @@
 	       ,else))
 	`(let ((,var ,token-form))
 	   (if ,var
-	       ,@body)))))
+	       ,@body
+	       ,else)))))
   
 (defmacro with-tokens* (token-list 
 			&body body)
@@ -402,16 +403,19 @@
 ;; make refal-scope compatible atom list of the string
 (defun string->scope (string)
   (let ((src (make-source string)))
-    (with-token (expr (refal-expr src))
-      (if (refal-empty src)
-	  expr
-	  (error (format nil "unexpected ~a" 
-			 (unwrap (refal-char src))))))))
+    (with-tokens* ((expr (refal-expr src))
+		   (nil (refal-empty src)
+			:else (error (format nil "unexpected ~a" 
+					     (unwrap (refal-char src))))))
+      expr)))
 
 ;; parse program
 (defun string->program (string)
-  (with-token (program (refal-program (make-source string)))
-    program))
+  (let ((src (make-source string)))
+    (with-tokens* ((program (refal-program src))
+		   (nil (refal-empty src) 
+			:else (error (format nil "garbage at the end of input"))))
+      program)))
 
 (defgeneric interpolate (object))
 
