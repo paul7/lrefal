@@ -21,9 +21,15 @@
   (with-gensyms (scope)
     `(defbuiltin ,name (,scope)
        (data->scope (mklist (apply ,function (data ,scope)))))))
+
+(defmacro defuncall (name function)
+  (with-gensyms (scope) 
+    `(defbuiltin ,name (,scope)
+       (funcall ,function ,scope))))
+
+(reset-module *global*)
  
-(defbuiltin "ident" (scope)
-  scope)
+(defuncall "ident" #'identity)
 
 (defapply "+" #'+)
 
@@ -33,3 +39,4 @@
 
 (defapply "=" #'=)
 
+(defuncall "Prout" #'print)
