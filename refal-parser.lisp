@@ -7,8 +7,7 @@
 	:net.paul7.utility
 	:net.paul7.refal.internal)
   (:export string->program
-	   string->scope
-	   interpolate))
+	   string->scope))
 
 (in-package :net.paul7.refal.parser)
 
@@ -416,14 +415,3 @@
 		   (nil (refal-empty src) 
 			:else (error (format nil "garbage at the end of input"))))
       program)))
-
-(defgeneric interpolate (object))
-
-(defmethod interpolate ((var refal-var))
-  (if (bound var)
-      (value var)
-      (error (format nil "~a is unbound" var))))
-  
-(defmethod interpolate ((pattern refal-pattern))
-  (data->scope (mapcan (compose #'copy-list #'mklist #'interpolate)
-		       (data pattern))))

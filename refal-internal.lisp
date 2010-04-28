@@ -36,6 +36,7 @@
 	   function-dict
 	   module-name
 	   refal-entry
+	   interpolate
 	   *main*
 	   *global*
 	   s
@@ -275,3 +276,14 @@
     :initform (make-instance 'refal-pattern 
 			     :data nil)
     :accessor function-argument)))
+
+(defgeneric interpolate (object))
+
+(defmethod interpolate ((var refal-var))
+  (if (bound var)
+      (value var)
+      (error (format nil "~a is unbound" var))))
+  
+(defmethod interpolate ((pattern refal-pattern))
+  (data->scope (mapcan (compose #'copy-list #'mklist #'interpolate)
+		       (data pattern))))
