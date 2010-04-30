@@ -287,3 +287,6 @@
 (defmethod interpolate ((pattern refal-pattern))
   (data->scope (mapcan (compose #'copy-list #'mklist #'interpolate)
 		       (data pattern))))
+
+(defgeneric prout (object &key))
+
