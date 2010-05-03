@@ -8,7 +8,8 @@
 	:net.paul7.refal.internal
 	:net.paul7.refal.parser
 	:net.paul7.refal.matcher)
-  (:export))
+  (:export compile-program
+	   refal-call))
 
 (in-package :net.paul7.refal.compiler)
 

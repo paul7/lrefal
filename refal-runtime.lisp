@@ -25,7 +25,7 @@
 (defmacro defuncall (name function)
   (with-gensyms (scope) 
     `(defbuiltin ,name (,scope)
-       (funcall ,function ,scope))))
+       (data->scope (mklist (funcall ,function (data ,scope)))))))
 
 (reset-module *global*)
  
@@ -39,4 +39,25 @@
 
 (defapply "=" #'=)
 
-(defuncall "Prout" #'print)
+(defuncall "Prout" #'prout)
+
+(defuncall "Print" #'print-return)
+
+(defgeneric prout (object))
+
+(defmethod prout ((basic-object t))
+  (format t "~a" basic-object))
+
+(defmethod prout ((list cons))
+  (dolist (each list)
+    (prout each)
+    (format t " ")))
+
+(defmethod prout ((scope refal-scope))
+  (format t "(")
+  (prout (data scope))
+  (format t ")"))
+
+(defun print-return (object)
+  (prout object)
+  object)
