@@ -5,7 +5,8 @@
   (:nicknames :rrt)
   (:use :common-lisp
 	:net.paul7.utility
-	:net.paul7.refal.internal)
+	:net.paul7.refal.internal
+	:net.paul7.refal.parser)
   (:export))
 
 (in-package :net.paul7.refal.runtime)
@@ -42,6 +43,10 @@
 (defuncall "Prout" #'prout)
 
 (defuncall "Print" #'print-return)
+
+(defbuiltin "Card" (scope) 
+  (declare (ignore scope))
+  (string->scope (read-line)))
 
 (defgeneric prout (object))
 
