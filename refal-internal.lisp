@@ -30,6 +30,7 @@
 	   pop-scope
 	   data->scope 
 	   data->pattern
+	   refal-nil
 	   var-type
 	   refal-module
 	   reset-module
@@ -212,6 +213,9 @@
 
 (defun data->pattern (data)
   (make-instance 'refal-pattern :data data))
+
+(defun refal-nil ()
+  (make-instance 'refal-scope))
 
 (defclass refal-module ()
   ((function-dict

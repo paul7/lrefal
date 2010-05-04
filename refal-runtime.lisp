@@ -48,6 +48,11 @@
   (declare (ignore scope))
   (string->scope (read-line)))
 
+(defbuiltin "Nl" (scope)
+  (declare (ignore scope))
+  (format t "~%")
+  (refal-nil))
+
 (defgeneric prout (object))
 
 (defmethod prout ((basic-object t))

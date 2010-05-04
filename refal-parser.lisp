@@ -142,7 +142,7 @@
 (defmacro deftoken-collect (name (src &rest args)
 			    construct
 			    &body body)
-  (with-gensyms (result each)
+  (with-gensyms (result each subtoken)
     `(deftoken ,name (,src ,@args)
        (do ((,each (if (not (end-of-stream ,src))
 			    (progn 
@@ -155,7 +155,10 @@
 		(getf ,each :end))
 	    (list :token (funcall ,construct (nreverse ,result))))
 	 (if (not (getf ,each :ignore))
-	     (push (unwrap ,each) ,result))))))
+	     (if (getf ,each :splice)
+		 (dolist (,subtoken (unwrap ,each))
+		   (push ,subtoken ,result))
+		 (push (unwrap ,each) ,result)))))))
 
 (defmacro deftoken-list (name (src &rest args)
 			 &body body)
@@ -170,12 +173,12 @@
 		     close-form) 
 		    &optional (bad-form `(error "expected closing token")))
   (with-gensyms (subexpr)
-    `(deftoken-basic ,name (,src ,@args)
+    `(deftoken ,name (,src ,@args)
        (with-tokens* ((nil ,open-form)
 		      (,subexpr ,body-form)
 		      (nil ,close-form 
 		       :else ,bad-form))
-	 ,subexpr))))
+	 (list :token ,subexpr)))))
 
 (defmacro lookup (src &body body)
   `(unwind-protect (progn
@@ -211,12 +214,20 @@
 
 (deftoken refal-delimiter (src)
   (or (refal-space src) 
-      (one-of src '(#\) #\( #\< #\> #\{ #\} ))))
+      (one-of src '(#\) #\( #\< #\> #\{ #\} #\' #\" ))))
 
 (deftoken refal-word-char (src)
   (if (not (or (refal-delimiter src)
 	       (refal-separator src)
 	       (refal-statement-terminator src)))
+      (refal-char src)))
+
+(deftoken refal-quoted-char (src)
+  (if (not (exactly src #\' ))
+      (refal-char src)))
+
+(deftoken refal-double-quoted-char (src)
+  (if (not (exactly src #\" ))
       (refal-char src)))
 
 (deftoken refal-open-parenthesis (src)
@@ -246,11 +257,17 @@
 (deftoken refal-bad (src)
   (not (characterp (read-source src))))
 
-(deftoken-list refal-chars (src) 
+(deftoken-list refal-word-chars (src) 
   (refal-word-char src))
 
 (defmacro refal-word (src)
-  `(not-empty (refal-chars ,src)))
+  `(not-empty (refal-word-chars ,src)))
+
+(deftoken-list refal-quoted-chars (src)
+  (refal-quoted-char src))
+
+(deftoken-list refal-double-quoted-chars (src)
+  (refal-double-quoted-char src))
 
 (deftoken-list refal-spaces (src)
   (refal-space src))
@@ -278,6 +295,22 @@
   (refal-skip-spaces src)
   (end-of-stream src))
 
+(deftoken refal-quote (src)
+  (exactly src #\' ))
+
+(defblock refal-string-chars
+    (src)
+  ((refal-quote src)
+   (refal-quoted-chars src)
+   (refal-quote src)))
+
+(defmacro refal-string (src)
+  `(token-splice (refal-string-chars ,src)))
+
+(deftoken-basic refal-id (src)
+  (with-token (id (refal-word src))
+    (convert-sequence id 'string)))
+
 (defblock refal-subexpr 
     (src) 
   ((refal-open-parenthesis src)
@@ -294,18 +327,16 @@
 	    (refal-separator src)
 	    (refal-statement-terminator src)))
       (refal-skip-spaces src)
+      (refal-string src)
       (refal-subexpr src)
       (refal-integer src)
-      (refal-char src)))
+      (refal-id src)))
 
 (deftoken-basic refal-literal (src)
   (with-token (word (or (refal-integer src)
-			(refal-word src)))
+			(refal-string src)
+			(refal-id src)))
     (make-instance 'refal-e-var :value (mklist word))))
-
-(deftoken-basic refal-id (src)
-  (with-token (id (refal-word src))
-    (convert-sequence id 'string)))
 
 (deftoken-basic refal-var (src dict)
   (with-tokens* ((type (one-of src '(#\e #\t #\s)))
