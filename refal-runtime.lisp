@@ -56,12 +56,14 @@
 (defgeneric prout (object))
 
 (defmethod prout ((basic-object t))
-  (format t "~a" basic-object))
+  (format t "~a " basic-object))
+
+(defmethod prout ((char character))
+  (format t "~a" char))
 
 (defmethod prout ((list cons))
   (dolist (each list)
-    (prout each)
-    (format t " ")))
+    (prout each)))
 
 (defmethod prout ((scope refal-scope))
   (format t "(")

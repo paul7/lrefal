@@ -44,11 +44,12 @@
 (defmacro convert-sequence (sequence class)
   `(map ,class #'identity ,sequence))
 
-(defmacro post-incf (place)
-  (with-gensyms (old)
-    `(let ((,old ,place))
-       (incf ,place)
-       ,old)))
+(defmacro post-incf (place &optional (delta 1) &environment env)
+  (multiple-value-bind (dummies vals new setter getter)
+      (get-setf-expansion place env)
+    `(let* (,@(mapcar #'list dummies vals) (,(car new) (+ ,delta ,getter)))
+       (prog1 ,getter
+	 ,setter))))
 
 (defun sequence-reader (sequence)
   (let ((position 0)

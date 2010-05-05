@@ -226,8 +226,8 @@
     :initarg :module-name
     :accessor module-name)))
 
-(defparameter *main* (make-instance 'refal-module))
-(defparameter *global* (make-instance 'refal-module 
+(defvar *main* (make-instance 'refal-module))
+(defvar *global* (make-instance 'refal-module 
 				      :module-name "$$global"))
 
 (defun reset-module (module)
