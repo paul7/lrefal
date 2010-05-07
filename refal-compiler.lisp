@@ -43,8 +43,21 @@
       #'(lambda (data)
 	  (compiled compiled-statements data)))))
 	       
+(defun compile-clauses (clauses)
+  (if (null clauses)
+      (constantly t)
+      (let ((first (first clauses))
+	    (rest (rest clauses)))
+	(let ((where (getf first :where))
+	      (clause (getf first :clause)))
+	  #'(lambda ()
+	      (match-pattern clause (interpolate where) 
+			     (compile-clauses rest)))))))
+	  
+
 (defun compile-statement (statement)
   (let ((pattern (getf statement :left))
+	(clauses (getf statement :clauses))
 	(construct (getf statement :right))
 	(dict (getf statement :dict)))
     (flet ((do-vars (fn)
@@ -52,7 +65,8 @@
 		  (funcall fn var))))
       #'(lambda (data)
 	  (do-vars #'push-scope)
-	  (unwind-protect (if (match-pattern pattern data)
+	  (unwind-protect (if (match-pattern pattern data
+					     (compile-clauses clauses))
 			      (interpolate construct))
 	    (do-vars #'pop-scope))))))
 

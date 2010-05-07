@@ -219,7 +219,9 @@
 (deftoken refal-word-char (src)
   (if (not (or (refal-delimiter src)
 	       (refal-separator src)
-	       (refal-statement-terminator src)))
+	       (refal-statement-terminator src)
+	       (refal-where-separator src)
+	       (refal-clause-separator src)))
       (refal-char src)))
 
 (deftoken refal-quoted-char (src)
@@ -253,6 +255,12 @@
 
 (deftoken refal-statement-terminator (src)
   (exactly src #\; ))
+
+(deftoken refal-where-separator (src)
+  (one-of src '(#\, #\& )))
+
+(deftoken refal-clause-separator (src)
+  (exactly src #\: ))
 
 (deftoken refal-bad (src)
   (not (characterp (read-source src))))
@@ -378,20 +386,44 @@
 	    (refal-close-funcall src)
 	    (refal-close-block src)
 	    (refal-separator src)
-	    (refal-statement-terminator src)))
+	    (refal-statement-terminator src)
+	    (refal-where-separator src)))
       (refal-subpattern src dict)
       (refal-skip-spaces src) 
       (refal-funcall src dict)
       (refal-var src dict)
       (refal-literal src)))
 
+(deftoken-basic refal-where (src dict)
+  (refal-skip-spaces src)
+  (with-tokens* ((nil (refal-where-separator src))
+		 (where-expr (refal-pattern src dict))
+		 (nil (refal-clause-separator src))
+		 (clause (refal-pattern src dict)))
+    (list :where where-expr
+	  :clause clause)))
+
+(deftoken-basic refal-if (src dict)
+  (refal-skip-spaces src)
+  (with-tokens* ((nil (refal-where-separator src))
+		 (if-expr (refal-pattern src dict))
+		 (nil (refal-clause-separator src))
+		 (clause (refal-block src)))
+    (list :if if-expr
+	  :clause clause)))
+
+(deftoken-list refal-clauses (src dict)
+  (refal-where src dict))
+
 (deftoken-basic refal-statement 
     (src &optional (dict (make-hash-table :test #'equalp)))
   (with-tokens* ((left-pattern (refal-pattern src dict))
+		 (clauses (refal-clauses src dict)) 
 		 (nil (refal-separator src))
 		 (right-pattern (refal-pattern src dict))
 		 (nil (refal-statement-terminator src)))
     (list :left left-pattern
+	  :clauses clauses
 	  :right right-pattern
 	  :dict dict)))
 
