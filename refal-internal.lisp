@@ -38,6 +38,8 @@
 	   module-name
 	   refal-entry
 	   interpolate
+	   normalize-integer
+	   lispify-integer
 	   *main*
 	   *global*))
 
@@ -288,3 +290,14 @@
 (defmethod interpolate ((pattern refal-pattern))
   (data->scope (mapcan (compose #'copy-list #'mklist #'interpolate)
 		       (data pattern))))
+
+(defun normalize-integer (data)
+  (let ((int (first data)))
+    (if (< int 0)
+	(list #\- (abs int))
+	(list int))))
+
+(defun lispify-integer (data)
+  (if (eql #\- (first data))
+      (- (second data))
+      (first data)))

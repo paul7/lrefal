@@ -23,6 +23,9 @@
     `(defbuiltin ,name (,scope)
        (data->scope (mklist (apply ,function (data ,scope)))))))
 
+(defmacro defapply-arithmetic (name function)
+  `(defapply ,name (compose #'normalize-integer #'mklist ,function)))
+
 (defmacro defuncall (name function)
   (with-gensyms (scope) 
     `(defbuiltin ,name (,scope)
@@ -32,13 +35,13 @@
  
 (defuncall "ident" #'identity)
 
-(defapply "+" #'+)
+(defapply-arithmetic "+" #'+)
 
-(defapply "-" #'-)
+(defapply-arithmetic "-" #'-)
 
-(defapply "*" #'*)
+(defapply-arithmetic "*" #'*)
 
-(defapply "=" #'=)
+(defapply-arithmetic "=" #'=)
 
 (defuncall "Prout" #'prout)
 
