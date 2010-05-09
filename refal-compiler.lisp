@@ -39,7 +39,7 @@
 	       (if code
 		   (or (funcall (first code) data)
 		       (compiled (rest code) data))
-		   (error "no match"))))
+		   (error "REFAL ERROR: RECOGNITION IMPOSSIBLE"))))
       #'(lambda (data)
 	  (compiled compiled-statements data)))))
 	       
