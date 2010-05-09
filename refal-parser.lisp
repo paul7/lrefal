@@ -400,31 +400,43 @@
 		 (where-expr (refal-pattern src dict))
 		 (nil (refal-clause-separator src))
 		 (clause (refal-pattern src dict)))
-    (list :where where-expr
-	  :clause clause)))
-
-(deftoken-basic refal-if (src dict)
-  (refal-skip-spaces src)
-  (with-tokens* ((nil (refal-where-separator src))
-		 (if-expr (refal-pattern src dict))
-		 (nil (refal-clause-separator src))
-		 (clause (refal-block src)))
-    (list :if if-expr
-	  :clause clause)))
+    (if (lookup src
+	  (refal-open-block src))
+	nil ; hackery to prevent confusion with refal-case
+	(list :where where-expr
+	      :matches clause))))
 
 (deftoken-list refal-clauses (src dict)
   (refal-where src dict))
+
+(deftoken-basic refal-case (src dict)
+  (refal-skip-spaces src)
+  (with-tokens* ((nil (refal-where-separator src))
+		 (when-expr (refal-pattern src dict))
+		 (nil (refal-clause-separator src))
+		 (clause (refal-block src)))
+    (list :when when-expr
+	  :matches clause)))
+
+(deftoken-basic refal-match (src dict)
+  (with-tokens* ((nil (refal-separator src))
+		 (pattern (refal-pattern src dict)))
+    (list :replace pattern)))
+
+(deftoken-basic refal-right (src dict)
+  (with-tokens* ((right (or (refal-match src dict)
+			    (refal-case src dict)))
+		 (nil (refal-statement-terminator src)))
+    right))
 
 (deftoken-basic refal-statement 
     (src &optional (dict (make-hash-table :test #'equalp)))
   (with-tokens* ((left-pattern (refal-pattern src dict))
 		 (clauses (refal-clauses src dict)) 
-		 (nil (refal-separator src))
-		 (right-pattern (refal-pattern src dict))
-		 (nil (refal-statement-terminator src)))
+		 (right (refal-right src dict)))
     (list :left left-pattern
 	  :clauses clauses
-	  :right right-pattern
+	  :right right
 	  :dict dict)))
 
 (deftoken refal-function-header (src)
