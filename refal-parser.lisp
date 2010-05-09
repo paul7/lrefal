@@ -414,7 +414,7 @@
   (with-tokens* ((nil (refal-where-separator src))
 		 (when-expr (refal-pattern src dict))
 		 (nil (refal-clause-separator src))
-		 (clause (refal-block src)))
+		 (clause (refal-block src dict)))
     (list :when when-expr
 	  :matches clause)))
 
@@ -429,8 +429,8 @@
 		 (nil (refal-statement-terminator src)))
     right))
 
-(deftoken-basic refal-statement 
-    (src &optional (dict (make-hash-table :test #'equalp)))
+(deftoken-basic refal-statement (src &optional dict) 
+  (orf dict (make-hash-table :test #'equalp))
   (with-tokens* ((left-pattern (refal-pattern src dict))
 		 (clauses (refal-clauses src dict)) 
 		 (right (refal-right src dict)))
@@ -442,19 +442,19 @@
 (deftoken refal-function-header (src)
   (refal-id src))
 
-(deftoken-list refal-funbody (src) 
+(deftoken-list refal-funbody (src &optional dict) 
   (or (stop src
 	(or (refal-close-parenthesis src)
 	    (refal-close-funcall src)
 	    (refal-close-block src)
 	    (refal-statement-terminator src)))
-      (refal-statement src)))
+      (refal-statement src dict)))
 
-(defblock refal-block (src)
+(defblock refal-block (src &optional dict)
   ((progn
      (refal-skip-spaces src)
      (refal-open-block src))
-   (refal-funbody src)
+   (refal-funbody src dict)
    (progn 
      (refal-skip-spaces src)
      (refal-close-block src)))

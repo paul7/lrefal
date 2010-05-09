@@ -30,10 +30,12 @@
   (funcall (refal-entry module fname) data))
 
 ;; compile simple statement
-(defun compile-multiple (statements)
+(defun compile-multiple (statements
+			 &key in-scope)
   (let ((compiled-statements 
 	 (mapcar #'(lambda (statement)
-		     (funcall #'compile-statement statement))
+		     (funcall #'compile-statement statement 
+			      :in-scope in-scope))
 		 statements)))
     (labels ((compiled (code data)
 	       (if code
@@ -54,7 +56,8 @@
 	      (match-pattern pattern (interpolate where) 
 			     (compile-clauses rest)))))))
 
-(defun compile-statement (statement)
+(defun compile-statement (statement
+			  &key in-scope)
   (let ((pattern (getf statement :left))
 	(clauses (getf statement :clauses))
 	(right (getf statement :right))
@@ -70,17 +73,23 @@
 		      #'(lambda ()
 			  (interpolate replace)))
 		     ((and when matches)
-		      (let ((anon-func (compile-multiple matches)))
+		      (let ((anon-func (compile-multiple matches 
+							 :in-scope t)))
 			#'(lambda ()
 			    (funcall anon-func (interpolate when)))))
 		     (t (error "malformed ir"))))))
       (let ((compose (compose-right right)))
-	#'(lambda (data)
-	    (do-vars #'push-scope)
-	    (unwind-protect (if (match-pattern pattern data
-					       (compile-clauses clauses))
-				(funcall compose))
-	      (do-vars #'pop-scope)))))))
+	(if in-scope
+	    #'(lambda (data)
+		(if (match-pattern pattern data
+				   (compile-clauses clauses))
+		    (funcall compose)))
+	    #'(lambda (data)
+		(do-vars #'push-scope)
+		(unwind-protect (if (match-pattern pattern data
+						   (compile-clauses clauses))
+				    (funcall compose))
+		  (do-vars #'pop-scope))))))))
 
 (defmethod interpolate ((call refal-funcall))
   (with-accessors ((module module)

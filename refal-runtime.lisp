@@ -44,6 +44,8 @@
 
 (defuncall "Print" #'print-return)
 
+(defuncall "Compare" #'compare)
+
 (defbuiltin "Card" (scope) 
   (declare (ignore scope))
   (string->scope (read-line)))
@@ -73,3 +75,14 @@
 (defun print-return (object)
   (prout object)
   object)
+
+(defun compare (list)
+  (let ((a (first list))
+	(b (second list)))
+    (cond ((< a b)
+	   #\- )
+	  ((> a b)
+	   #\+)
+	  (t
+	   #\=))))
+	  

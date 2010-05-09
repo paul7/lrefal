@@ -11,6 +11,7 @@
 	   compose
 	   convert-sequence
 	   post-incf
+	   orf
 	   sequence-reader
 	   test
 	   join-plists))
@@ -48,6 +49,13 @@
   (multiple-value-bind (dummies vals new setter getter)
       (get-setf-expansion place env)
     `(let* (,@(mapcar #'list dummies vals) (,(car new) (+ ,delta ,getter)))
+       (prog1 ,getter
+	 ,setter))))
+
+(defmacro orf (place &rest alternatives &environment env)
+  (multiple-value-bind (dummies vals new setter getter)
+      (get-setf-expansion place env)
+    `(let* (,@(mapcar #'list dummies vals) (,(car new) (or ,getter ,@alternatives)))
        (prog1 ,getter
 	 ,setter))))
 
