@@ -1,0 +1,75 @@
+Go
+{
+	= <New-Board ()>;
+}
+
+Out-Board
+{
+	(e.X) = <Prout e.X><Nl>;
+}
+
+New-Board
+{
+	(e.Board), 
+		<Compare <Number-Placed (e.Board)> 8>:
+		{
+			'-' = <Place-Queen (e.Board)>;
+			t.GreaterOrEqual = <Out-Board (e.Board)>;
+		};
+}
+
+Place-Queen 
+{
+	(e.Board), 
+		<Up-to 8>: e.1 t.Try e.2, 
+		<Safe t.Try (e.Board)>: True,
+		<New-Board (e.Board t.Try)>: TryMore = ;
+	e.NoMoreTries = ;
+}
+
+Safe
+{
+	t.Queen (e.Board) = <Safe-Distance t.Queen (e.Board) 1>;
+}
+
+Safe-Distance 
+{
+	t.Only () t.Distance = True;
+	t.First (e.Rest t.Second) t.Distance =
+		<And 
+			<Safe-Pair t.First t.Second t.Distance> 
+			<Safe-Distance t.First (e.Rest) <+ 1 t.Distance>>
+		>;
+}
+
+Safe-Pair
+{
+	t.Same t.Same t.Distance = False;
+	t.First t.Second t.Distance,
+		<- t.First t.Second>: 
+		{
+			t.Distance = False;
+			'-' t.Distance = False;
+			e.Safe = True;
+		};
+}
+
+Number-Placed
+{
+	() = 0;
+	(t.1 e.Rest) = <+ <Number-Placed (e.Rest)> 1>;
+}
+
+And
+{
+	True True = True;
+	True False = False;
+	False True = False;
+	False False = False;
+}
+
+Up-to
+{
+	1 = 1;
+	t.N = <Up-to <- t.N 1>> t.N;
+}
