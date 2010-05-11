@@ -209,7 +209,7 @@
     (format stream "~{~a ~}" (data scope))))
 
 (defun empty (scope)
-  (zerop (length (active-scope scope))))
+  (null (active-scope scope)))
 
 (defun data->scope (data)
   (make-instance 'refal-scope :data data))
