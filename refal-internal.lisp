@@ -194,7 +194,8 @@
   (with-accessors ((start start)
 		   (end end)
 		   (data data)) scope
-    (subseq data start end)))
+    (nthcdr start data)))
+    ;(subseq data start end)))
 
 ;; promote scope boundaries after successful matching
 (defun shift-scope (scope margin)
@@ -288,8 +289,8 @@
       (error (format nil "~a is unbound" var))))
   
 (defmethod interpolate ((pattern refal-pattern))
-  (data->scope (mapcan (compose #'copy-list #'mklist #'interpolate)
-		       (data pattern))))
+  (data->scope (apply #'append (mapcar (compose #'mklist #'interpolate)
+				       (data pattern)))))
 
 (defun normalize-integer (data)
   (let ((int (first data)))

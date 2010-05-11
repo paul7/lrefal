@@ -14,7 +14,8 @@
 	   orf
 	   sequence-reader
 	   test
-	   join-plists))
+	   join-plists
+	   list-head= ))
 
 (in-package :net.paul7.utility)
 
@@ -80,3 +81,9 @@
     (let ((key (car rest))
 	  (value (cadr rest)))
       (setf (getf result key) value))))
+
+(defun list-head= (a b length)
+  (if (zerop length)
+      t
+      (and (equal (car a) (car b))
+	   (list-head= (cdr a) (cdr b) (1- length)))))

@@ -14,23 +14,25 @@
 ;; check if value is appropriate to be bound to var, i.e.
 ;; 1) check data type 
 ;; 2) make sure there's no conflict with already bound value
-(defgeneric appropriate (var value)
+(defgeneric appropriate (var value &optional size)
   (:method-combination and))
 
-(defmethod appropriate and ((var refal-var) value)
+(defmethod appropriate and ((var refal-var) value &optional (size 1))
   (with-accessors ((oldvalue value)) var
     (or (not (bound var))
-	(equal value oldvalue))))
+	(list-head= value oldvalue size))))
 
-(defmethod appropriate and ((var refal-t-var) value)
-  (single value))
+(defmethod appropriate and ((var refal-t-var) value &optional (size 1))
+  (= size 1))
 
-(defmethod appropriate and ((var refal-s-var) value)
+(defmethod appropriate and ((var refal-s-var) value &optional (size 1))
+  (declare (ignore size))
   (and (consp value)
        (not (consp (first value)))
        (not (scopep (first value)))))
 
-(defmethod appropriate and ((var-list refal-pattern) value)
+(defmethod appropriate and ((var-list refal-pattern) value &optional (size 1))
+  (declare (ignore size))
   (scopep value))
 
 ;; chomp size elements of the scope
@@ -38,8 +40,8 @@
 (defun match-size (var scope size)
   (let ((elements (active-scope scope)))
     (if (<= size (length elements))
-	(let ((matching (subseq elements 0 size)))
-	  (when (appropriate var matching)
+	(when (appropriate var elements size)
+	  (let ((matching (subseq elements 0 size)))
 	    (bind-var var matching)
 	    size)))))
 
