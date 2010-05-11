@@ -1,0 +1,17 @@
+ignore {
+e.1 = ;
+}
+
+range {
+1 = 1;
+s.N = <range <- s.N 1>> s.N;
+}
+
+reverse {
+ = ;
+t.1 e.Rest = <reverse e.Rest> t.1;
+}
+
+Go {
+ = <ignore <reverse <range 500>>>;
+}
