@@ -1,4 +1,4 @@
-;;;; Refal expression matcher engine
+ ;;;; Refal expression matcher engine
 ;;;; (c) paul7, 2010
 
 (defpackage :net.paul7.refal.matcher
@@ -32,7 +32,7 @@
 	 (not (scopep (first active))))))
 
 (defmethod appropriate and ((var-list refal-pattern) value)
-  (scopep (first (active value))))
+  (scopep value))
 
 ;; chomp size elements of the scope
 ;; try to bind var, if appropriate
