@@ -31,7 +31,7 @@
 	 (not (consp (first active)))
 	 (not (scopep (first active))))))
 
-(defmethod appropriate and ((var-list refal-pattern) value)
+(defmethod appropriate and ((var-list cons) value)
   (scopep value))
 
 ;; chomp size elements of the scope
@@ -69,7 +69,7 @@
 	    (return t)
 	    (unbind-var first)))))
 
-(defmethod match-var ((first refal-pattern) rest scope
+(defmethod match-var ((first cons) rest scope
 		       &optional (next-op (constantly t)))
   (let ((subexpr (first (active scope))))
     (if (appropriate first subexpr)

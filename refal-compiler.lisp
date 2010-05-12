@@ -96,4 +96,4 @@
 		   (name function-name)
 		   (argument function-argument)) call
   (let ((actual-arg (interpolate argument)))
-    (data (refal-call module name actual-arg)))))
+    (active (refal-call module name actual-arg)))))

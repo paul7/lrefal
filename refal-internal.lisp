@@ -14,15 +14,12 @@
 	   copy-scope-data
 	   bound
 	   value
-	   data
 	   make-uniform-type
 	   make-var
 	   refal-var
 	   refal-t-var
 	   refal-s-var
 	   refal-e-var
-	   refal-scope
-	   refal-pattern
 	   refal-funcall
 	   function-name
 	   function-argument
@@ -160,51 +157,21 @@
   (setf (bound var) t)
   (setf (value var) value))
 
-;;; this class represents Refal data
-;;; encapsulates list of atoms constituting scope
-;;; and boundaries of scope yet unmatched
-(defclass refal-scope ()
-  ((start
-    :accessor start
-    :initarg :start
-    :initform 0)
-   (scope-size
-    :accessor scope-size
-    :initform nil
-    :initarg :scope-size)
-   (data
-    :accessor data
-    :initarg :data
-    :initform nil)
-   (active
-    :accessor active
-    :initform nil)))
+(defmacro make-scope (data size)
+  `(cons ,data ,size))
 
-(defclass refal-pattern (refal-scope) 
-  ())
+(defmacro active (scope)
+  `(car ,scope))
 
-(defmethod initialize-instance :after ((scope refal-scope) &key)
-  (with-accessors ((scope-size scope-size) 
-		   (data data)
-		   (start start)
-		   (active active)) scope
-    (orf scope-size (length data))
-    (setf active (nthcdr start data))))
+(defmacro scope-size (scope)
+  `(cdr ,scope))
 
-(defgeneric scopep (obj))
-
-(defmethod scopep ((obj t))
-  nil)
-
-(defmethod scopep ((obj refal-scope))
-  t)
+(defun scopep (obj)
+  (consp obj))
 
 (defun subscope (scope &key (shift 0) length)
   (orf length (- (scope-size scope) shift))
-  (make-instance 'refal-scope
-		 :data (data scope)
-		 :start (+ (start scope) shift)
-		 :scope-size length))
+  (make-scope (nthcdr shift (active scope)) length))
 
 (defun copy-scope-data (scope)
   (subseq (active scope) 0 (scope-size scope)))
@@ -213,21 +180,27 @@
   (and (= (scope-size scope1) (scope-size scope2))
        (list-head= (active scope1) (active scope2) (scope-size scope1))))
 
-(defmethod print-object ((scope refal-scope) stream)
-  (print-unreadable-object (scope stream)
-    (format stream "~{~a ~}" (data scope))))
-
 (defun empty (scope)
-  (null (active scope)))
+  (or (null (active scope))
+      (zerop (scope-size scope))))
+
+(defun append-scopes (&rest scopes)
+  (let ((data nil)
+	(size 0))
+    (mapc #'(lambda (scope)
+	      (setf data (append data (active scope)))
+	      (setf size (+ size (scope-size scope))))
+	  scopes)
+    (make-scope data size)))
 
 (defun data->scope (data)
-  (make-instance 'refal-scope :data data))
+  (make-scope data (length data)))
 
 (defun data->pattern (data)
-  (make-instance 'refal-pattern :data data))
+  (data->scope data))
 
 (defun refal-nil ()
-  (make-instance 'refal-scope))
+  (data->scope nil))
 
 (defclass refal-module ()
   ((function-dict
@@ -286,8 +259,7 @@
     :accessor function-name)
    (function-argument
     :initarg :function-argument
-    :initform (make-instance 'refal-pattern 
-			     :data nil)
+    :initform (data->pattern nil)
     :accessor function-argument)))
 
 (defgeneric interpolate (object))
@@ -297,9 +269,9 @@
       (copy-scope-data (value var))
       (error (format nil "~a is unbound" var))))
   
-(defmethod interpolate ((pattern refal-pattern))
-  (data->scope (apply #'append (mapcar (compose #'mklist #'interpolate)
-				       (data pattern)))))
+(defmethod interpolate ((pattern cons))
+  (data->scope (apply #'append-scopes (mapcar #'interpolate
+				       (active pattern)))))
 
 (defun normalize-integer (data)
   (let ((int (first data)))
