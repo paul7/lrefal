@@ -344,7 +344,7 @@
   (with-token (word (or (refal-integer src)
 			(refal-string src)
 			(refal-id src)))
-    (make-instance 'refal-e-var :value (mklist word))))
+    (make-instance 'refal-e-var :value (data->scope (mklist word)))))
 
 (deftoken-basic refal-var (src dict)
   (with-tokens* ((type (one-of src '(#\e #\t #\s)))

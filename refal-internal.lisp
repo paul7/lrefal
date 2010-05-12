@@ -5,10 +5,13 @@
   (:nicknames :ir)
   (:use :common-lisp
 	:net.paul7.utility)
-  (:export shift-scope
-	   active-scope
+  (:export scope-size
+	   subscope
+	   active
+	   scope=
 	   scopep
 	   empty
+	   copy-scope-data
 	   bound
 	   value
 	   data
@@ -165,21 +168,28 @@
     :accessor start
     :initarg :start
     :initform 0)
-   (end
-    :accessor end
-    :initarg :end)
+   (scope-size
+    :accessor scope-size
+    :initform nil
+    :initarg :scope-size)
    (data
     :accessor data
     :initarg :data
+    :initform nil)
+   (active
+    :accessor active
     :initform nil)))
 
 (defclass refal-pattern (refal-scope) 
   ())
 
 (defmethod initialize-instance :after ((scope refal-scope) &key)
-  (with-accessors ((end end) 
-		   (data data)) scope
-    (setf end (length data))))
+  (with-accessors ((scope-size scope-size) 
+		   (data data)
+		   (start start)
+		   (active active)) scope
+    (orf scope-size (length data))
+    (setf active (nthcdr start data))))
 
 (defgeneric scopep (obj))
 
@@ -189,27 +199,26 @@
 (defmethod scopep ((obj refal-scope))
   t)
 
-;; return list representing unmatched part of the scope
-(defun active-scope (scope)
-  (with-accessors ((start start)
-		   (end end)
-		   (data data)) scope
-    (nthcdr start data)))
-    ;(subseq data start end)))
-
-;; promote scope boundaries after successful matching
-(defun shift-scope (scope margin)
-  (make-instance 'refal-scope 
+(defun subscope (scope &key (shift 0) length)
+  (orf length (- (scope-size scope) shift))
+  (make-instance 'refal-scope
 		 :data (data scope)
-		 :start (+ (start scope) margin)
-		 :end (end scope)))
+		 :start (+ (start scope) shift)
+		 :scope-size length))
+
+(defun copy-scope-data (scope)
+  (subseq (active scope) 0 (scope-size scope)))
+
+(defun scope= (scope1 scope2)
+  (and (= (scope-size scope1) (scope-size scope2))
+       (list-head= (active scope1) (active scope2) (scope-size scope1))))
 
 (defmethod print-object ((scope refal-scope) stream)
   (print-unreadable-object (scope stream)
     (format stream "~{~a ~}" (data scope))))
 
 (defun empty (scope)
-  (null (active-scope scope)))
+  (null (active scope)))
 
 (defun data->scope (data)
   (make-instance 'refal-scope :data data))
@@ -285,7 +294,7 @@
 
 (defmethod interpolate ((var refal-var))
   (if (bound var)
-      (value var)
+      (copy-scope-data (value var))
       (error (format nil "~a is unbound" var))))
   
 (defmethod interpolate ((pattern refal-pattern))
