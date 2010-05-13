@@ -33,7 +33,7 @@
 
 (defun pairp (obj)
   (and (consp obj)
-       (atom (cdr obj))))
+       (not (listp (cdr obj)))))
 
 (defun mklist (obj)
   (if (and (listp obj) (not (pairp obj)))
