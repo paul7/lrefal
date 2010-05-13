@@ -483,6 +483,9 @@
 					     (unwrap (refal-char src))))))
       expr)))
 
+(defun string->pattern (string)
+  (unwrap (refal-pattern (make-source string) (make-hash-table))))
+
 ;; parse program
 (defun string->program (string)
   (let ((src (make-source string)))

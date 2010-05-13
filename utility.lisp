@@ -7,6 +7,7 @@
   (:use :common-lisp)
   (:export with-gensyms
 	   single
+	   pairp
 	   mklist
 	   compose
 	   convert-sequence
@@ -30,8 +31,14 @@
   (and (consp list)
        (not (cdr list))))
 
+(defun pairp (obj)
+  (and (consp obj)
+       (atom (cdr obj))))
+
 (defun mklist (obj)
-  (if (listp obj) obj (list obj)))
+  (if (and (listp obj) (not (pairp obj)))
+      obj 
+      (list obj)))
 
 (defun compose (&rest fns)
   (if fns

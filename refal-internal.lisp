@@ -167,7 +167,7 @@
   `(cdr ,scope))
 
 (defun scopep (obj)
-  (consp obj))
+  (pairp obj))
 
 (defun subscope (scope &key (shift 0) length)
   (orf length (- (scope-size scope) shift))
@@ -270,8 +270,8 @@
       (error (format nil "~a is unbound" var))))
   
 (defmethod interpolate ((pattern cons))
-  (data->scope (apply #'append-scopes (mapcar #'interpolate
-				       (active pattern)))))
+  (data->scope (mklist (apply #'append (mapcar #'interpolate
+					     (active pattern))))))
 
 (defun normalize-integer (data)
   (let ((int (first data)))
