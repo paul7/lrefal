@@ -270,8 +270,7 @@
       (error (format nil "~a is unbound" var))))
   
 (defmethod interpolate ((pattern cons))
-  (test pattern)
-  (data->scope (apply #'append (mapcar (compose mklist interpolate)
+  (data->scope (apply #'append (mapcar (compose #'mklist #'interpolate)
 				       (active pattern)))))
 
 (defun normalize-integer (data)
