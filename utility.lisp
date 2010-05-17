@@ -40,7 +40,7 @@
       obj 
       (list obj)))
 
-(defun compose (&rest fns)
+(defun compose% (&rest fns)
   (if fns
       (let ((fn1 (car (last fns)))
             (fns (butlast fns)))
@@ -49,6 +49,18 @@
                     :from-end t
                     :initial-value (apply fn1 args))))
       #'identity))
+
+(defmacro compose (&rest fns)
+  (flet ((make-call (fn arg)
+	   (if (atom fn)
+	       `(,fn ,arg)
+	       `(funcall ,fn ,arg))))
+    (with-gensyms (g)
+      `#'(lambda (,g)
+	   ,(do* ((form g (make-call (car rfns) form))
+		  (rfns (reverse fns) (cdr rfns)))
+		 ((null rfns)
+		  form))))))
 
 (defmacro convert-sequence (sequence class)
   `(map ,class #'identity ,sequence))

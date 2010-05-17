@@ -24,7 +24,7 @@
        (data->scope (mklist (apply ,function (active ,scope)))))))
 
 (defmacro defapply-arithmetic (name function)
-  `(defapply ,name (compose #'normalize-integer #'mklist ,function)))
+  `(defapply ,name (compose normalize-integer mklist ,function)))
 
 (defmacro defuncall (name function)
   (with-gensyms (scope) 
