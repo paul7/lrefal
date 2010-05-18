@@ -9,6 +9,7 @@
 	   subscope
 	   active
 	   scope=
+	   refal-scope
 	   scopep
 	   empty
 	   copy-scope-data
@@ -157,17 +158,25 @@
   (setf (bound var) t)
   (setf (value var) value))
 
+(defstruct refal-scope
+  data start end)
+
 (defmacro make-scope (data size)
-  `(cons ,data ,size))
+  `(make-refal-scope :data ,data :start 0 :end ,size))
 
 (defmacro active (scope)
-  `(car ,scope))
+  `(refal-scope-data ,scope))
 
 (defmacro scope-size (scope)
-  `(cdr ,scope))
+  `(- (refal-scope-end ,scope) (refal-scope-start ,scope)))
 
-(defun scopep (obj)
-  (pairp obj))
+(defgeneric scopep (obj))
+
+(defmethod scopep ((obj t))
+  nil)
+
+(defmethod scopep ((obj refal-scope))
+  t)
 
 (defun subscope (scope &key (shift 0) length)
   (orf length (- (scope-size scope) shift))
@@ -269,7 +278,7 @@
       (copy-scope-data (value var))
       (error (format nil "~a is unbound" var))))
   
-(defmethod interpolate ((pattern cons))
+(defmethod interpolate ((pattern refal-scope))
   (data->scope (apply #'append (mapcar (compose #'mklist #'interpolate)
 				       (active pattern)))))
 
