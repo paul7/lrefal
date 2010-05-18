@@ -40,16 +40,6 @@
       obj 
       (list obj)))
 
-(defun compose% (&rest fns)
-  (if fns
-      (let ((fn1 (car (last fns)))
-            (fns (butlast fns)))
-        #'(lambda (&rest args)
-            (reduce #'funcall fns
-                    :from-end t
-                    :initial-value (apply fn1 args))))
-      #'identity))
-
 (defmacro compose (&rest fns)
   (if fns
       (let ((fn1 (car (last fns)))
@@ -72,12 +62,7 @@
        (prog1 ,getter
 	 ,setter))))
 
-(defmacro orf (place &rest alternatives &environment env)
-  (multiple-value-bind (dummies vals new setter getter)
-      (get-setf-expansion place env)
-    `(let* (,@(mapcar #'list dummies vals) (,(car new) (or ,getter ,@alternatives)))
-       (prog1 ,getter
-	 ,setter))))
+(define-modify-macro orf (&rest alternatives) or)
 
 (defun sequence-reader (sequence)
   (let ((position 0)
