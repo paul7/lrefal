@@ -42,7 +42,8 @@
 		   (src-pos src-pos) 
 		   (size size)) src
     (if (< src-pos size)
-	(elt data (post-incf src-pos)))))
+	(prog1 (elt data src-pos)
+	  (incf src-pos)))))
 
 (defun save-pos (src)
   (with-accessors ((saved-pos saved-pos)

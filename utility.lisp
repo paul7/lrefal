@@ -9,11 +9,10 @@
 	   single
 	   pairp
 	   mklist
+	   mkvector
 	   compose
 	   convert-sequence
-	   post-incf
 	   orf
-	   sequence-reader
 	   test
 	   join-plists
 	   list-head= ))
@@ -25,6 +24,9 @@
 (defmacro with-gensyms ((&rest names) &body body)
   `(let ,(loop for n in names collect `(,n (gensym)))
      ,@body))
+
+(defmacro convert-sequence (sequence class)
+  `(map ,class #'identity ,sequence))
 
 ;; check if list consists of sole element
 (defun single (list)
@@ -40,6 +42,12 @@
       obj 
       (list obj)))
 
+(defun mkvector (obj)
+  (typecase obj
+    (vector obj)
+    (sequence (convert-sequence obj 'vector))
+    (t (vector obj))))
+
 (defmacro compose (&rest fns)
   (if fns
       (let ((fn1 (car (last fns)))
@@ -52,24 +60,7 @@
 		     ((null rfns)
 		      form)))))))
 
-(defmacro convert-sequence (sequence class)
-  `(map ,class #'identity ,sequence))
-
-(defmacro post-incf (place &optional (delta 1) &environment env)
-  (multiple-value-bind (dummies vals new setter getter)
-      (get-setf-expansion place env)
-    `(let* (,@(mapcar #'list dummies vals) (,(car new) (+ ,delta ,getter)))
-       (prog1 ,getter
-	 ,setter))))
-
 (define-modify-macro orf (&rest alternatives) or)
-
-(defun sequence-reader (sequence)
-  (let ((position 0)
-	(length (length sequence)))
-    #'(lambda ()
-	(if (< position length)
-	    (elt sequence (post-incf position))))))
 
 (defmacro test (form)
   (with-gensyms (result)

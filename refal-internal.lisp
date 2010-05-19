@@ -176,28 +176,34 @@
     (t nil)))
 
 (defun subscope (scope &key (shift 0) length)
-  (orf length (- (scope-size scope) shift))
-  (make-scope (nthcdr shift (active scope)) length))
+  (let ((data (refal-scope-data scope))
+	(start (refal-scope-start scope))
+	(end (refal-scope-end scope)))
+    (let* ((new-start (min (+ start shift) end))
+	   (new-end (if length
+			(min (+ new-start length) end)
+			end)))
+      (make-refal-scope :data data :start new-start :end new-end))))
 
 (defun copy-scope-data (scope)
-  (subseq (active scope) 0 (scope-size scope)))
+  (subseq (refal-scope-data scope) 
+	  (refal-scope-start scope) 
+	  (refal-scope-end scope)))
 
 (defun scope= (scope1 scope2)
   (and (= (scope-size scope1) (scope-size scope2))
-       (list-head= (active scope1) (active scope2) (scope-size scope1))))
+       (do ((i (refal-scope-start scope1) (1+ i))
+	    (j (refal-scope-start scope2) (1+ j))
+	    (data1 (refal-scope-data scope1))
+	    (data2 (refal-scope-data scope2))
+	    (stop (refal-scope-end scope1)))
+	   ((= i stop) t)
+	 (if (not (equal (elt data1 i)
+			 (elt data2 j)))
+	     (return nil)))))
 
 (defun empty (scope)
-  (or (null (active scope))
-      (zerop (scope-size scope))))
-
-(defun append-scopes (&rest scopes)
-  (let ((data nil)
-	(size 0))
-    (mapc #'(lambda (scope)
-	      (setf data (append data (active scope)))
-	      (setf size (+ size (scope-size scope))))
-	  scopes)
-    (make-scope data size)))
+  (zerop (scope-size scope)))
 
 (defun data->scope (data)
   (let ((vec (convert-sequence data 'vector)))
@@ -277,8 +283,9 @@
       (error (format nil "~a is unbound" var))))
   
 (defmethod interpolate ((pattern refal-scope))
-  (data->scope (apply #'append (mapcar (compose #'mklist #'interpolate)
-				       (active pattern)))))
+  (data->scope (apply #'concatenate 'vector 
+		      (map 'list (compose #'mkvector #'interpolate)
+			   (refal-scope-data pattern)))))
 
 (defun normalize-integer (data)
   (let ((int (first data)))
