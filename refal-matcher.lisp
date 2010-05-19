@@ -26,10 +26,8 @@
   (= (scope-size value) 1))
 
 (defmethod appropriate and ((var refal-s-var) value)
-  (let ((active (active value)))
-    (and (consp active)
-	 (not (consp (first active)))
-	 (not (scopep (first active))))))
+  (let ((first (scope-first value)))
+    (not (scopep first))))
 
 (defmethod appropriate and ((var-list refal-scope) value)
   (scopep value))
@@ -71,24 +69,27 @@
 
 (defmethod match-var ((first refal-scope) rest scope
 		       &optional (next-op (constantly t)))
-  (let ((subexpr (first (active scope))))
-    (if (appropriate first subexpr)
-	(flet ((chain-call ()
-		 (match-pattern rest (subscope scope :shift 1) next-op)))
-	  (match-pattern first subexpr #'chain-call)))))
+  (if (not (empty scope))
+      (let ((subexpr (scope-first scope)))
+	(if (appropriate first subexpr)
+	    (flet ((chain-call ()
+		     (match-pattern rest 
+				    (subscope scope :shift 1) 
+				    next-op)))
+	      (match-pattern first subexpr #'chain-call))))))
 
 ;; try and bind vars to match the scope given
 ;; on success, continue to next-op
 ;; retry, if it fails
 (defun match-pattern (pattern scope &optional (next-op (constantly t)))
-  (let ((first (first (active pattern)))
-	(rest (subscope pattern :shift 1)))
-    (cond 
-      ((and (empty pattern) (empty scope))
-       (funcall next-op))
-      ((not (empty pattern))
-       (match-var first rest scope next-op))
-      (t nil))))
+  (cond 
+    ((and (empty pattern) (empty scope))
+     (funcall next-op))
+    ((not (empty pattern))
+     (let ((first (scope-first pattern))
+	   (rest (subscope pattern :shift 1)))
+       (match-var first rest scope next-op)))
+      (t nil)))
 
 ;;; pattern fiddling
 (defun make-pattern (specs &optional (dict (make-hash-table)))

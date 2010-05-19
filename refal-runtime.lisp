@@ -21,15 +21,22 @@
 (defmacro defapply (name function)
   (with-gensyms (scope)
     `(defbuiltin ,name (,scope)
-       (data->scope (mklist (apply ,function (active ,scope)))))))
+       (data->scope (mkvector (apply ,function 
+				     (tolist (active ,scope))))))))
+
+(defun tolist (sequence)
+  (convert-sequence sequence 'list))
 
 (defmacro defapply-arithmetic (name function)
-  `(defapply ,name (compose #'normalize-integer #'mklist ,function)))
+  `(defapply ,name (compose #'normalize-integer 
+			    #'mkvector
+			    ,function)))
 
 (defmacro defuncall (name function)
   (with-gensyms (scope) 
     `(defbuiltin ,name (,scope)
-       (data->scope (mklist (funcall ,function (active ,scope)))))))
+       (data->scope (mkvector (funcall ,function 
+				       (tolist (active ,scope))))))))
 
 (reset-module *global*)
  
@@ -74,9 +81,9 @@
   (prout object)
   object)
 
-(defun compare (list)
-  (let ((a (first list))
-	(b (second list)))
+(defun compare (data)
+  (let ((a (elt data 0))
+	(b (elt data 1)))
     (cond ((< a b)
 	   #\- )
 	  ((> a b)

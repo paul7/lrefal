@@ -10,6 +10,8 @@
 	   active
 	   scope=
 	   refal-scope
+	   refal-scope-data
+	   scope-first
 	   scopep
 	   empty
 	   copy-scope-data
@@ -170,6 +172,9 @@
 (defmacro scope-size (scope)
   `(- (refal-scope-end ,scope) (refal-scope-start ,scope)))
 
+(defmacro scope-first (scope)
+  `(elt (refal-scope-data ,scope) (refal-scope-start ,scope)))
+
 (defun scopep (obj)
   (typecase obj
     (refal-scope t)
@@ -288,12 +293,12 @@
 			   (refal-scope-data pattern)))))
 
 (defun normalize-integer (data)
-  (let ((int (first data)))
+  (let ((int (elt data 0)))
     (if (< int 0)
-	(list #\- (abs int))
-	(list int))))
+	(vector #\- (abs int))
+	(vector int))))
 
 (defun lispify-integer (data)
-  (if (eql #\- (first data))
-      (- (second data))
-      (first data)))
+  (if (eql #\- (elt data 0))
+      (- (elt data 1))
+      (elt data 0)))
