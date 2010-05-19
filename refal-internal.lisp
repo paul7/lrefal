@@ -170,13 +170,10 @@
 (defmacro scope-size (scope)
   `(- (refal-scope-end ,scope) (refal-scope-start ,scope)))
 
-(defgeneric scopep (obj))
-
-(defmethod scopep ((obj t))
-  nil)
-
-(defmethod scopep ((obj refal-scope))
-  t)
+(defun scopep (obj)
+  (typecase obj
+    (refal-scope t)
+    (t nil)))
 
 (defun subscope (scope &key (shift 0) length)
   (orf length (- (scope-size scope) shift))
@@ -203,7 +200,8 @@
     (make-scope data size)))
 
 (defun data->scope (data)
-  (make-scope data (length data)))
+  (let ((vec (convert-sequence data 'vector)))
+    (make-scope vec (length vec))))
 
 (defun data->pattern (data)
   (data->scope data))
