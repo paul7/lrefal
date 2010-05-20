@@ -180,7 +180,7 @@
     (refal-scope t)
     (t nil)))
 
-(defun subscope (scope &key (shift 0) length)
+(defun subscope (scope &key (shift 0) length reuse)
   (let ((data (refal-scope-data scope))
 	(start (refal-scope-start scope))
 	(end (refal-scope-end scope)))
@@ -188,7 +188,12 @@
 	   (new-end (if length
 			(min (+ new-start length) end)
 			end)))
-      (make-refal-scope :data data :start new-start :end new-end))))
+      (if reuse
+	  (progn 
+	    (setf (refal-scope-start scope) new-start)
+	    (setf (refal-scope-end scope) new-end)
+	    scope)
+	  (make-refal-scope :data data :start new-start :end new-end)))))
 
 (defun copy-scope-data (scope)
   (subseq (refal-scope-data scope) 

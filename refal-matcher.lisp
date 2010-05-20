@@ -74,7 +74,7 @@
 	(if (appropriate first subexpr)
 	    (flet ((chain-call ()
 		     (match-pattern rest 
-				    (subscope scope :shift 1) 
+				    (subscope scope :shift 1 :reuse t) 
 				    next-op)))
 	      (match-pattern first subexpr #'chain-call))))))
 
