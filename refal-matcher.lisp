@@ -1,4 +1,4 @@
- ;;;; Refal expression matcher engine
+;;;; Refal expression matcher engine
 ;;;; (c) paul7, 2010
 
 (defpackage :net.paul7.refal.matcher
@@ -90,20 +90,3 @@
 	   (rest (subscope pattern :shift 1)))
        (match-var first rest scope next-op)))
       (t nil)))
-
-;;; pattern fiddling
-(defun make-pattern (specs &optional (dict (make-hash-table)))
-  (labels ((add-var (type name)
-	     (let ((old-var (gethash name dict)))
-	       (cond
-		 ((not old-var) 
-		  (setf (gethash name dict) (make-var type name)))
-		 ((eq (var-type old-var) type) 
-		  old-var)
-		 (t (error "type mismatch")))))
-	   (add-var-from-spec (spec)
-	     (if (atom (first spec))
-		 (add-var (make-uniform-type(first spec)) (second spec))
-		 (make-pattern spec dict))))
-    (values (data->pattern (mapcar #'add-var-from-spec specs))
-	    dict)))
