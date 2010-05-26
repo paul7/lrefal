@@ -175,10 +175,8 @@
 (defmacro scope-first (scope)
   `(elt (refal-scope-data ,scope) (refal-scope-start ,scope)))
 
-(defun scopep (obj)
-  (typecase obj
-    (refal-scope t)
-    (t nil)))
+(defmacro scopep (obj)
+  `(refal-scope-p ,obj))
 
 (defun subscope (scope &key (shift 0) length reuse)
   (let ((data (refal-scope-data scope))
@@ -208,8 +206,8 @@
 	    (data2 (refal-scope-data scope2))
 	    (stop (refal-scope-end scope1)))
 	   ((= i stop) t)
-	 (if (not (equal (elt data1 i)
-			 (elt data2 j)))
+	 (unless (equal (elt data1 i)
+			(elt data2 j))
 	     (return nil)))))
 
 (defun empty (scope)

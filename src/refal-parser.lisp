@@ -137,29 +137,29 @@
 	     (list :token ,result))))))
 
 (deftoken end-of-stream (src)
-  (if (not (read-source src))
-      (list :token t)))
+  (unless (read-source src)
+    (list :token t)))
 
 (defmacro deftoken-collect (name (src &rest args)
 			    construct
 			    &body body)
   (with-gensyms (result each subtoken)
     `(deftoken ,name (,src ,@args)
-       (do ((,each (if (not (end-of-stream ,src))
-			    (progn 
-			      ,@body))
-		   (if (not (end-of-stream ,src))
-			    (progn 
-			      ,@body)))
+       (do ((,each (unless (end-of-stream ,src)
+		     (progn 
+		       ,@body))
+		   (unless (end-of-stream ,src)
+		     (progn 
+		       ,@body)))
 	    (,result nil))
 	   ((or (not ,each)
 		(getf ,each :end))
 	    (list :token (funcall ,construct (nreverse ,result))))
-	 (if (not (getf ,each :ignore))
-	     (if (getf ,each :splice)
-		 (dolist (,subtoken (unwrap ,each))
-		   (push ,subtoken ,result))
-		 (push (unwrap ,each) ,result)))))))
+	 (unless (getf ,each :ignore)
+	   (if (getf ,each :splice)
+	       (dolist (,subtoken (unwrap ,each))
+		 (push ,subtoken ,result))
+	       (push (unwrap ,each) ,result)))))))
 
 (defmacro deftoken-list (name (src &rest args)
 			 &body body)
@@ -218,20 +218,20 @@
       (one-of src '(#\) #\( #\< #\> #\{ #\} #\' #\" ))))
 
 (deftoken refal-word-char (src)
-  (if (not (or (refal-delimiter src)
-	       (refal-separator src)
-	       (refal-statement-terminator src)
-	       (refal-where-separator src)
-	       (refal-clause-separator src)))
-      (refal-char src)))
+  (unless (or (refal-delimiter src)
+	      (refal-separator src)
+	      (refal-statement-terminator src)
+	      (refal-where-separator src)
+	      (refal-clause-separator src))
+    (refal-char src)))
 
 (deftoken refal-quoted-char (src)
-  (if (not (exactly src #\' ))
-      (refal-char src)))
+  (unless (exactly src #\' )
+    (refal-char src)))
 
 (deftoken refal-double-quoted-char (src)
-  (if (not (exactly src #\" ))
-      (refal-char src)))
+  (unless (exactly src #\" )
+    (refal-char src)))
 
 (deftoken refal-open-parenthesis (src)
   (exactly src #\( ))

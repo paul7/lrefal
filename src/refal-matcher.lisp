@@ -51,8 +51,8 @@
   (let ((bound (bound first)))
     (if (match-size first scope 1)
 	(or (match-pattern rest (subscope scope :shift 1) next-op)
-	    (if (not bound)
-		(unbind-var first))))))
+	    (unless bound
+	      (unbind-var first))))))
 
 (defmethod match-var ((first refal-e-var) rest scope
 		      &optional (next-op (constantly t)))
@@ -69,14 +69,14 @@
 
 (defmethod match-var ((first refal-scope) rest scope
 		       &optional (next-op (constantly t)))
-  (if (not (empty scope))
-      (let ((subexpr (scope-first scope)))
-	(if (appropriate first subexpr)
-	    (flet ((chain-call ()
-		     (match-pattern rest 
-				    (subscope scope :shift 1 :reuse t) 
-				    next-op)))
-	      (match-pattern first subexpr #'chain-call))))))
+  (unless (empty scope)
+    (let ((subexpr (scope-first scope)))
+      (if (appropriate first subexpr)
+	  (flet ((chain-call ()
+		   (match-pattern rest 
+				  (subscope scope :shift 1 :reuse t) 
+				  next-op)))
+	    (match-pattern first subexpr #'chain-call))))))
 
 ;; try and bind vars to match the scope given
 ;; on success, continue to next-op
