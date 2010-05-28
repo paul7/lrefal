@@ -238,7 +238,7 @@
 
 (defun reset-module (module)
   (with-accessors ((dict function-dict)) module
-    (setf dict (make-hash-table :test #'equalp))))
+    (clrhash dict)))
 
 (defun refal-entry (module fname)
   (with-accessors ((dict function-dict) 
