@@ -12,6 +12,8 @@
 		    :depends-on ("refal-internal"))
 	     (:file "refal-matcher" 
 		    :depends-on ("refal-internal"))
+	     (:file "refal-matcher2"
+		    :depends-on ("refal-internal"))
 	     (:file "refal-compiler" 
 		    :depends-on ("refal-parser"
 				 "refal-matcher"))
