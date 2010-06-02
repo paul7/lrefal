@@ -4,7 +4,8 @@
   :components 
   ((:module "aux"
 	    :components
-	    ((:file "utility")))
+	    ((:file "utility")
+	     (:file "cont")))
    (:module "src"
 	    :components
 	    ((:file "refal-internal" )
