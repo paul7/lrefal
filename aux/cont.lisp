@@ -5,7 +5,7 @@
 (defpackage :net.paul7.continuations
   (:nicknames :cont)
   (:use :common-lisp)
-  (:export =/cc
+  (:export progn/cc
 	   =lambda
 	   =defun
 	   =bind
@@ -15,7 +15,7 @@
 
 (in-package :net.paul7.continuations)
 
-(defmacro =/cc (&body body)
+(defmacro progn/cc (&body body)
   `(let ((*cont* #'identity))
      ,@body))
 
