@@ -7,7 +7,7 @@
 	:net.paul7.utility
 	:net.paul7.refal.internal
 	:net.paul7.refal.parser
-	:net.paul7.refal.matcher)
+	:net.paul7.refal.matcher2)
   (:export compile-program
 	   refal-call))
 
@@ -54,7 +54,7 @@
 	      (pattern (getf first :matches)))
 	  #'(lambda ()
 	      (match-pattern pattern (interpolate where) 
-			     (compile-clauses rest)))))))
+			     :next-op (compile-clauses rest)))))))
 
 (defun compile-statement (statement
 			  &key in-scope)
@@ -82,13 +82,14 @@
 	(if in-scope
 	    #'(lambda (data)
 		(if (match-pattern pattern data
-				   (compile-clauses clauses))
+				   :next-op (compile-clauses clauses))
 		    (funcall compose)))
 	    #'(lambda (data)
 		(do-vars #'push-scope)
-		(unwind-protect (if (match-pattern pattern data
-						   (compile-clauses clauses))
-				    (funcall compose))
+		(unwind-protect 
+		     (if (match-pattern pattern data
+					:next-op (compile-clauses clauses))
+			 (funcall compose))
 		  (do-vars #'pop-scope))))))))
 
 (defmethod interpolate ((call refal-funcall))

@@ -12,6 +12,7 @@
 	   refal-scope
 	   refal-scope-data
 	   scope-first
+	   scope-last
 	   scopep
 	   empty
 	   copy-scope-data
@@ -167,13 +168,24 @@
   `(make-refal-scope :data ,data :start 0 :end ,size))
 
 (defmacro active (scope)
-  `(refal-scope-data ,scope))
+  (with-gensyms (gscope)
+    `(let ((,gscope ,scope))
+       (refal-scope-data ,gscope))))
 
 (defmacro scope-size (scope)
-  `(- (refal-scope-end ,scope) (refal-scope-start ,scope)))
+  (with-gensyms (gscope)
+    `(let ((,gscope ,scope))
+       (- (refal-scope-end ,gscope) (refal-scope-start ,gscope)))))
 
 (defmacro scope-first (scope)
-  `(elt (refal-scope-data ,scope) (refal-scope-start ,scope)))
+  (with-gensyms (gscope)
+    `(let ((,gscope ,scope))
+       (elt (refal-scope-data ,gscope) (refal-scope-start ,gscope)))))
+
+(defmacro scope-last (scope)
+  (with-gensyms (gscope)
+    `(let ((,gscope ,scope))
+       (elt (refal-scope-data ,gscope) (1- (refal-scope-end ,gscope))))))
 
 (defmacro scopep (obj)
   `(refal-scope-p ,obj))
