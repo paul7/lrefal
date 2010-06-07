@@ -13,6 +13,7 @@
 	   refal-scope-data
 	   scope-first
 	   scope-last
+	   scope-chomp
 	   scopep
 	   empty
 	   copy-scope-data
@@ -21,6 +22,7 @@
 	   make-uniform-type
 	   make-var
 	   refal-var
+	   refal-atomic
 	   refal-t-var
 	   refal-s-var
 	   refal-e-var
@@ -76,14 +78,19 @@
 (defclass refal-e-var (refal-var) 
   ())
 
+;; s or t
+;; can be bound to a single position of scope
+(defclass refal-atomic (refal-var)
+  ())
+
 ;; t.X
 ;; can be bound to atom or to parenthesized subexpression
-(defclass refal-t-var (refal-var)
+(defclass refal-t-var (refal-atomic)
   ())
 
 ;; s.X
 ;; can be bound to atom only
-(defclass refal-s-var (refal-t-var)
+(defclass refal-s-var (refal-atomic)
   ())
 
 (defmethod initialize-instance :after ((var refal-var) &key)
@@ -187,17 +194,29 @@
     `(let ((,gscope ,scope))
        (elt (refal-scope-data ,gscope) (1- (refal-scope-end ,gscope))))))
 
+(defun scope-chomp (scope &key from-end)
+  (if from-end
+      (scope-last scope)
+      (scope-first scope)))
+
 (defmacro scopep (obj)
   `(refal-scope-p ,obj))
 
-(defun subscope (scope &key (shift 0) length reuse)
+(defun subscope (scope 
+		 &key (shift 0) length reuse from-end)
   (let ((data (refal-scope-data scope))
 	(start (refal-scope-start scope))
 	(end (refal-scope-end scope)))
-    (let* ((new-start (min (+ start shift) end))
-	   (new-end (if length
-			(min (+ new-start length) end)
-			end)))
+    (let* ((new-start (if from-end 
+			  (if length
+			      (max (- end shift length) start)
+			      start)
+			  (min (+ start shift) end)))
+	   (new-end (if from-end
+			(max (- end shift) start)
+			(if length
+			    (min (+ new-start length) end)
+			    end))))
       (if reuse
 	  (progn 
 	    (setf (refal-scope-start scope) new-start)

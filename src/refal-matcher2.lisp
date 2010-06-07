@@ -20,7 +20,7 @@
     (or (not (bound var))
 	(scope= value oldvalue))))
 
-(defmethod appropriate and ((var refal-t-var) value)
+(defmethod appropriate and ((var refal-atomic) value)
   (= (scope-size value) 1))
 
 (defmethod appropriate and ((var refal-s-var) value)
@@ -32,21 +32,21 @@
 
 ;; chomp size elements of the scope
 ;; try to bind var, if appropriate
-(defun match-size (var scope size)
+(defun match-size (var scope size &key from-end)
   (let ((scope-size (scope-size scope)))
     (if (<= size scope-size)
-	(let ((matching (subscope scope :length size)))
+	(let ((matching (subscope scope :length size :from-end from-end)))
 	  (when (appropriate var matching)
 	    (bind-var var matching)
 	    size)))))
 
 (defgeneric match-var (first rest scope &key next-op from-end))
 
-(defmethod match-var ((first refal-t-var) rest scope 
+(defmethod match-var ((first refal-atomic) rest scope 
 		      &key (next-op (constantly t)) from-end)
   (let ((bound (bound first)))
     (if (match-size first scope 1)
-	(or (match-pattern rest (subscope scope :shift 1) 
+	(or (match-pattern rest (subscope scope :shift 1 :from-end from-end) 
 			   :next-op next-op)
 	    (unless bound
 	      (unbind-var first))))))
@@ -56,12 +56,12 @@
   (if (bound first)
       (let ((size (scope-size (value first))))
 	(if (match-size first scope size)
-	    (match-pattern rest (subscope scope :shift size) 
+	    (match-pattern rest (subscope scope :shift size :from-end from-end) 
 			   :next-op next-op)))
       (do ((size 0 (1+ size)))
 	  ((not (match-size first scope size))
 	   (unbind-var first))
-	(if (match-pattern rest (subscope scope :shift size) 
+	(if (match-pattern rest (subscope scope :shift size :from-end from-end) 
 			   :next-op next-op)
 	    (return t)
 	    (unbind-var first)))))
@@ -69,13 +69,17 @@
 (defmethod match-var ((first refal-scope) rest scope
 		       &key (next-op (constantly t)) from-end)
   (unless (empty scope)
-    (let ((subexpr (scope-first scope)))
+    (let ((subexpr (scope-chomp scope :from-end from-end)))
       (if (appropriate first subexpr)
 	  (flet ((chain-call ()
 		   (match-pattern rest 
-				  (subscope scope :shift 1) 
+				  (subscope scope :shift 1 :from-end from-end) 
 				  :next-op next-op)))
 	    (match-pattern first subexpr :next-op #'chain-call))))))
+
+(defun match-atomic (pattern scope 
+		     &key (next-op (constantly t)) from-end)
+  nil)
 
 (defun match-e-vars (pattern scope 
 		     &key (next-op (constantly t)))
